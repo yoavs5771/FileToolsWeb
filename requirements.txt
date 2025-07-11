@@ -1,0 +1,7 @@
+Flask
+python-docx
+docx2pdf
+python-pptx
+comtypes
+PyPDF2
+Pillow
