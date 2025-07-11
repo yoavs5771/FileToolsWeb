@@ -1,6 +1,10 @@
 services:
   - type: web
-    name: filetools
+    name: filetools-web
     env: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python app.py"
+    plan: free
+    envVars:
+      - key: FLASK_ENV
+        value: production
