@@ -1,3 +1,26 @@
 {
-  "select_files": "Select files to convert"
+  "select_files": "Select files to convert",
+  "select_folder": "Select folder to convert",
+  "select_output": "Select output folder",
+  "converting": "Converting... please wait.",
+  "done": "✅ Conversion complete!",
+  "fill_fields": "Please fill all fields before converting.",
+  "error": "Missing Info",
+  "merge_title": "Merged PDF",
+  "merge_prompt": "Enter name for merged PDF (without extension):",
+  "cancel": "Canceled",
+  "no_merge_name": "No name provided for merged PDF. Canceling.",
+  "choose_input_type": "Choose input type:",
+  "select_input_files": "Select Files",
+  "select_input_folder": "Select Folder",
+  "browse_input": "📂 Browse Input",
+  "browse_output": "📁 Browse Output",
+  "select_formats": "Select output formats:",
+  "merge_option": "🗃️ Merge PDFs into one",
+  "start_conversion": "🚀 Start Conversion",
+  "language_label": "🌐 Language",
+  "created_by": "v2.1 | Created by Yoavs5771",
+  "upload_file": "Upload a file to convert",
+  "choose_format": "Choose output format:",
+  "convert_button": "Convert"
 }
