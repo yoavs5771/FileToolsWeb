@@ -7,7 +7,7 @@ from PIL import Image
 from docx import Document
 from pptx import Presentation
 from PyPDF2 import PdfReader, PdfWriter, PdfMerger
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 
 def convert_docx_to_txt(docx_path, txt_path):
