@@ -1,51 +1,63 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify
+from converter import convert_files
 import os
 from werkzeug.utils import secure_filename
-from pathlib import Path
-from converter import convert_file
-
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'converted'
-ALLOWED_EXTENSIONS = {'docx', 'pptx', 'pdf', 'jpg', 'jpeg', 'png', 'bmp', 'tiff', 'txt', 'html'}
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
-app.secret_key = 'secret!'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['RESULT_FOLDER'] = 'results'
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+# ודא שהתיקיות קיימות
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
-
-        file = request.files['file']
-        output_format = request.form.get('format')
-
-        if file.filename == '' or not output_format:
-            flash('Please select file and output format')
-            return redirect(request.url)
-
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(input_path)
-
-            try:
-                output_path = convert_file(input_path, output_format, app.config['OUTPUT_FOLDER'])
-                return send_file(output_path, as_attachment=True)
-            except Exception as e:
-                flash(f"Conversion error: {e}")
-                return redirect(request.url)
-
     return render_template('index.html')
+
+
+@app.route('/convert', methods=['POST'])
+def convert():
+    try:
+        # קבצי קלט
+        files = request.files.getlist('files[]')
+        if not files or not any(file.filename for file in files):
+            print("❌ לא הועלו קבצים")
+            return jsonify({'success': False, 'message': 'No files uploaded'})
+
+        # פורמטים
+        formats = request.form.getlist('formats[]')
+        if not formats:
+            print("❌ לא נבחרו פורמטים")
+            return jsonify({'success': False, 'message': 'No output formats selected'})
+
+        # נתיב תיקיית יעד
+        output_dir = app.config['RESULT_FOLDER']
+
+        # שמירת קבצים
+        input_paths = []
+        for file in files:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            input_paths.append(file_path)
+
+        print("📂 קבצים לשמירה:", input_paths)
+        print("🎯 פורמטים נבחרים:", formats)
+
+        # המרה
+        success, details = convert_files(input_paths, output_dir, formats)
+
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'message': details})
+
+    except Exception as e:
+        print("⚠️ שגיאה:", str(e))
+        return jsonify({'success': False, 'message': str(e)})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
