@@ -1,63 +1,57 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, send_file, jsonify
+from werkzeug.utils import secure_filename
 from converter import convert_files
 import os
-from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['RESULT_FOLDER'] = 'results'
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'outputs'
 
-# ודא שהתיקיות קיימות
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
-
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
 @app.route('/convert', methods=['POST'])
 def convert():
-    try:
-        # קבצי קלט
-        files = request.files.getlist('files[]')
-        if not files or not any(file.filename for file in files):
-            print("❌ לא הועלו קבצים")
-            return jsonify({'success': False, 'message': 'No files uploaded'})
+    if 'files' not in request.files:
+        return jsonify({"error": "No files provided"}), 400
 
-        # פורמטים
-        formats = request.form.getlist('formats[]')
-        if not formats:
-            print("❌ לא נבחרו פורמטים")
-            return jsonify({'success': False, 'message': 'No output formats selected'})
+    files = request.files.getlist('files')
+    output_formats = request.form.getlist('formats[]')
+    merge_pdf = request.form.get('merge', 'false') == 'true'
+    delete_pages = request.form.get('delete_pages')
 
-        # נתיב תיקיית יעד
-        output_dir = app.config['RESULT_FOLDER']
+    delete_pages_list = None
+    if delete_pages:
+        try:
+            delete_pages_list = [int(x.strip()) for x in delete_pages.split(',') if x.strip().isdigit()]
+        except:
+            pass
 
-        # שמירת קבצים
-        input_paths = []
-        for file in files:
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-            input_paths.append(file_path)
+    saved_paths = []
+    for file in files:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{filename}")
+        file.save(file_path)
+        saved_paths.append(file_path)
 
-        print("📂 קבצים לשמירה:", input_paths)
-        print("🎯 פורמטים נבחרים:", formats)
+    convert_files(
+        file_paths=saved_paths,
+        output_formats=output_formats,
+        output_folder=OUTPUT_FOLDER,
+        merge_pdf=merge_pdf,
+        delete_pages=delete_pages_list
+    )
 
-        # המרה
-        success, details = convert_files(input_paths, output_dir, formats)
+    return jsonify({"success": True})
 
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'message': details})
-
-    except Exception as e:
-        print("⚠️ שגיאה:", str(e))
-        return jsonify({'success': False, 'message': str(e)})
-
+@app.route('/download/<filename>')
+def download_file(filename):
+    return send_file(os.path.join(OUTPUT_FOLDER, filename), as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)

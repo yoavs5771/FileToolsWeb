@@ -1,126 +1,83 @@
+# converter.py
 import os
 import subprocess
 from pathlib import Path
-from docx import Document
-from pptx import Presentation
-from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 from PIL import Image
-import pdfkit
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
-# === פונקציות בסיסיות ===
-def convert_docx_to_txt(docx_path, output_path):
-    doc = Document(docx_path)
-    text = '\n'.join(p.text for p in doc.paragraphs)
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(text)
+def convert_to_pdf_libreoffice(input_file, output_dir):
+    subprocess.run([
+        'soffice',
+        '--headless',
+        '--convert-to', 'pdf',
+        '--outdir', output_dir,
+        input_file
+    ], check=True)
 
-def convert_docx_to_html(docx_path, output_path):
-    doc = Document(docx_path)
-    html = "<html><body>" + ''.join(f"<p>{p.text}</p>" for p in doc.paragraphs) + "</body></html>"
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(html)
+def convert_image(input_path, output_path, to_format):
+    with Image.open(input_path) as im:
+        im.convert("RGB").save(output_path, to_format.upper())
 
-def convert_docx_to_pdf(docx_path, output_path):
+def pdf_to_images(pdf_path, output_dir):
     try:
-        subprocess.run([
-            'libreoffice', '--headless', '--convert-to', 'pdf',
-            '--outdir', str(Path(output_path).parent), docx_path
-        ], check=True)
-    except Exception as e:
-        print("❌ LibreOffice DOCX to PDF failed:", e)
+        import fitz  # PyMuPDF
+    except ImportError:
+        print("fitz (PyMuPDF) not installed")
+        return
 
-def convert_pptx_to_pdf(pptx_path, output_path):
-    try:
-        subprocess.run([
-            'libreoffice', '--headless', '--convert-to', 'pdf',
-            '--outdir', str(Path(output_path).parent), pptx_path
-        ], check=True)
-    except Exception as e:
-        print("❌ LibreOffice PPTX to PDF failed:", e)
+    doc = fitz.open(pdf_path)
+    for page_num in range(len(doc)):
+        pix = doc.load_page(page_num).get_pixmap()
+        out_path = os.path.join(output_dir, f"{Path(pdf_path).stem}_page{page_num+1}.png")
+        pix.save(out_path)
+    doc.close()
 
-def convert_pptx_to_images(pptx_path, output_folder):
-    prs = Presentation(pptx_path)
-    for i, slide in enumerate(prs.slides):
-        placeholder = os.path.join(output_folder, f"slide_{i+1}.txt")
-        with open(placeholder, 'w', encoding='utf-8') as f:
-            f.write(f"[Slide {i+1}] Placeholder text")
-
-def convert_txt_to_pdf(txt_path, output_path):
-    with open(txt_path, 'r', encoding='utf-8') as f:
-        text = f.read()
-    html = f"<html><body><pre>{text}</pre></body></html>"
-    temp_html = Path(output_path).with_suffix('.html')
-    with open(temp_html, 'w', encoding='utf-8') as f:
-        f.write(html)
-    pdfkit.from_file(str(temp_html), str(output_path))
-    os.remove(temp_html)
-
-def html_to_pdf(html_path, output_path):
-    pdfkit.from_file(html_path, output_path)
-
-def merge_pdfs(pdf_paths, output_path):
-    merger = PdfMerger()
-    for path in pdf_paths:
-        merger.append(path)
-    merger.write(output_path)
-    merger.close()
-
-def delete_pdf_pages(pdf_path, output_path, pages_to_delete):
-    reader = PdfReader(pdf_path)
+def remove_pages_from_pdf(input_pdf, output_pdf, pages_to_remove):
+    reader = PdfReader(input_pdf)
     writer = PdfWriter()
-    total_pages = len(reader.pages)
-    for i in range(total_pages):
-        if i not in pages_to_delete:
+    for i in range(len(reader.pages)):
+        if (i+1) not in pages_to_remove:
             writer.add_page(reader.pages[i])
-    with open(output_path, 'wb') as f:
+    with open(output_pdf, 'wb') as f:
         writer.write(f)
 
-def image_to_pdf(image_path, output_path):
-    img = Image.open(image_path)
-    rgb = img.convert('RGB')
-    rgb.save(output_path, 'PDF')
+def convert_files(file_paths, output_formats, output_folder, merge_pdf=False, delete_pages=None):
+    os.makedirs(output_folder, exist_ok=True)
+    converted_pdfs = []
 
-def image_to_image(image_path, output_path):
-    img = Image.open(image_path)
-    img.save(output_path)
+    for file_path in file_paths:
+        ext = Path(file_path).suffix.lower()
+        filename = Path(file_path).stem
 
-# === כלי עזר ===
-def get_output_path(input_path, output_ext, output_folder=None):
-    base = Path(input_path).stem
-    parent = Path(output_folder) if output_folder else Path(input_path).parent
-    return str(parent / f"{base}.{output_ext}")
+        for fmt in output_formats:
+            fmt = fmt.lower()
+            out_file = os.path.join(output_folder, f"{filename}.{fmt}")
 
-# === פונקציית־על ===
-def convert_file(input_path, output_format, output_folder=None):
-    input_path = Path(input_path)
-    input_ext = input_path.suffix.lower()
-    output_path = get_output_path(input_path, output_format, output_folder)
+            if fmt == 'pdf':
+                if ext in ['.docx', '.pptx', '.xlsx', '.odt', '.ods']:
+                    convert_to_pdf_libreoffice(file_path, output_folder)
+                    converted_pdf = os.path.join(output_folder, f"{filename}.pdf")
+                    if delete_pages:
+                        new_pdf = os.path.join(output_folder, f"{filename}_filtered.pdf")
+                        remove_pages_from_pdf(converted_pdf, new_pdf, delete_pages)
+                        converted_pdf = new_pdf
+                    converted_pdfs.append(converted_pdf)
 
-    if input_ext == '.docx':
-        if output_format == 'pdf':
-            convert_docx_to_pdf(str(input_path), str(output_path))
-        elif output_format == 'txt':
-            convert_docx_to_txt(str(input_path), str(output_path))
-        elif output_format == 'html':
-            convert_docx_to_html(str(input_path), str(output_path))
-    elif input_ext == '.pptx':
-        if output_format == 'pdf':
-            convert_pptx_to_pdf(str(input_path), str(output_path))
-        elif output_format in ['jpg', 'png']:
-            os.makedirs(output_path, exist_ok=True)
-            convert_pptx_to_images(str(input_path), str(output_path))
-    elif input_ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-        if output_format == 'pdf':
-            image_to_pdf(str(input_path), str(output_path))
-        else:
-            image_to_image(str(input_path), str(output_path))
-    elif input_ext == '.txt' and output_format == 'pdf':
-        convert_txt_to_pdf(str(input_path), str(output_path))
-    elif input_ext == '.html' and output_format == 'pdf':
-        html_to_pdf(str(input_path), str(output_path))
-    elif input_ext == '.pdf' and output_format == 'merge':
-        raise NotImplementedError("Use merge_pdfs() separately.")
-    else:
-        raise ValueError(f"Unsupported conversion: {input_ext} → {output_format}")
+                elif ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
+                    image_pdf = os.path.join(output_folder, f"{filename}.pdf")
+                    convert_image(file_path, image_pdf, 'pdf')
+                    converted_pdfs.append(image_pdf)
 
-    return str(output_path)
+            elif fmt in ['jpg', 'jpeg', 'png', 'bmp', 'tiff'] and ext == '.pdf':
+                pdf_to_images(file_path, output_folder)
+
+            elif fmt in ['jpg', 'jpeg', 'png', 'bmp', 'tiff'] and ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
+                convert_image(file_path, out_file, fmt)
+
+    if merge_pdf and converted_pdfs:
+        merger = PdfMerger()
+        for pdf in converted_pdfs:
+            merger.append(pdf)
+        merged_path = os.path.join(output_folder, "merged_output.pdf")
+        merger.write(merged_path)
+        merger.close()
