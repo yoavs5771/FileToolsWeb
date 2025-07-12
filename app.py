@@ -1,74 +1,51 @@
-from flask import Flask, request, render_template, send_file, redirect, url_for
-from werkzeug.utils import secure_filename
-from converter import *
-from pathlib import Path
-import tempfile
+from flask import Flask, render_template, request, send_file, redirect, url_for, flash
 import os
+from werkzeug.utils import secure_filename
+from pathlib import Path
+from converter import convert_file
+
+UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'converted'
+ALLOWED_EXTENSIONS = {'docx', 'pptx', 'pdf', 'jpg', 'jpeg', 'png', 'bmp', 'tiff', 'txt', 'html'}
 
 app = Flask(__name__)
-UPLOAD_FOLDER = tempfile.gettempdir()
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+app.secret_key = 'secret!'
 
-@app.route("/")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template("index.html")
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(request.url)
 
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
+        file = request.files['file']
+        output_format = request.form.get('format')
 
-@app.route("/convert", methods=["POST"])
-def convert():
-    file = request.files.get("file")
-    conversion_type = request.form.get("conversion")
-    output_file = tempfile.NamedTemporaryFile(delete=False)
+        if file.filename == '' or not output_format:
+            flash('Please select file and output format')
+            return redirect(request.url)
 
-    if not file:
-        return "No file uploaded"
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(input_path)
 
-    filename = secure_filename(file.filename)
-    input_path = Path(UPLOAD_FOLDER) / filename
-    file.save(input_path)
-    out_path = Path(output_file.name)
+            try:
+                output_path = convert_file(input_path, output_format, app.config['OUTPUT_FOLDER'])
+                return send_file(output_path, as_attachment=True)
+            except Exception as e:
+                flash(f"Conversion error: {e}")
+                return redirect(request.url)
 
-    try:
-        if conversion_type == "docx2txt":
-            convert_docx_to_txt(input_path, out_path)
-        elif conversion_type == "docx2html":
-            convert_docx_to_html(input_path, out_path)
-        elif conversion_type == "image2png":
-            convert_images(input_path, out_path.with_suffix(".png"), "png")
-        elif conversion_type == "video2audio":
-            convert_video_to_audio(input_path, out_path.with_suffix(".mp3"))
-        elif conversion_type == "extract_pdf_images":
-            extract_dir = Path(UPLOAD_FOLDER) / "pdf_images"
-            extract_dir.mkdir(exist_ok=True)
-            extract_images_from_pdf(input_path, extract_dir)
-            return f"Images extracted to: {extract_dir}"
-        elif conversion_type == "delete_pdf_pages":
-            delete_pdf_pages(input_path, [0], out_path)  # delete page 1 as example
-        elif conversion_type == "pptx2pdf":
-            convert_pptx_to_pdf_placeholder(input_path, out_path.with_suffix(".pdf"))
-        else:
-            return "Unknown conversion"
+    return render_template('index.html')
 
-        return send_file(out_path, as_attachment=True)
-
-    except Exception as e:
-        return f"Error during conversion: {e}"
-
-@app.route("/merge", methods=["POST"])
-def merge():
-    files = request.files.getlist("files")
-    pdf_list = []
-    for file in files:
-        input_path = Path(UPLOAD_FOLDER) / secure_filename(file.filename)
-        file.save(input_path)
-        pdf_list.append(input_path)
-
-    out_path = Path(UPLOAD_FOLDER) / "merged.pdf"
-    merge_pdfs(pdf_list, out_path)
-    return send_file(out_path, as_attachment=True)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
-
