@@ -1,134 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FileTools Web</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="/translations/lang.js" defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="title">File Converter Tool</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <div class="container">
-        <div id="language-switcher">
-            <label for="language"><span id="language_label">🌐 Language</span></label>
-            <select id="language"></select>
-        </div>
+  <div class="container">
+    <h1 data-i18n="title">File Converter Tool</h1>
 
-        <h1 id="page_title">File Converter</h1>
-
-        <!-- Step 1: File Selection -->
-        <div class="step-section active" id="step-1">
-            <label for="inputType" id="choose_input_type">Choose input type:</label>
-            <select id="inputType">
-                <option value="files">🔘 <span id="select_input_files">Select Files</span></option>
-                <option value="folder">📁 <span id="select_input_folder">Select Folder</span></option>
-            </select>
-
-            <label id="select_files_label">Select files to convert</label>
-            <input type="file" id="inputFiles" multiple>
-
-            <label id="select_folder_label" style="display:none;">Select folder to convert</label>
-            <input type="file" id="inputFolder" webkitdirectory directory style="display:none;">
-
-            <div class="step-buttons">
-                <button type="button" onclick="nextStep(2)" id="next_button_step1">Next</button>
-            </div>
-        </div>
-
-        <!-- Step 2: Output Format -->
-        <div class="step-section" id="step-2">
-            <label for="outputFormats" id="select_formats">Select output formats:</label>
-            <select id="outputFormats" multiple>
-                <option value="pdf">PDF</option>
-                <option value="txt">TXT</option>
-                <option value="html">HTML</option>
-                <option value="png">PNG</option>
-                <option value="jpg">JPG</option>
-            </select>
-
-            <label for="outputDir" id="select_output">Select output directory</label>
-            <input type="file" id="outputDir" webkitdirectory directory>
-
-            <div>
-                <input type="checkbox" id="mergePDF">
-                <label for="mergePDF" id="merge_option">🗃️ Merge PDF files into one</label>
-            </div>
-
-            <div class="step-buttons">
-                <button type="button" onclick="prevStep(1)" id="back_button_step2">Back</button>
-                <button type="button" onclick="nextStep(3)" id="next_button_step2">Next</button>
-            </div>
-        </div>
-
-        <!-- Step 3: Summary & Start -->
-        <div class="step-section" id="step-3">
-            <div id="summary-box">
-                <h5 id="summary_title">Summary:</h5>
-                <div id="summary-content"></div>
-            </div>
-
-            <div class="progress" id="progressBarWrapper" style="display:none;">
-                <div class="progress-bar" id="progressBar">0%</div>
-            </div>
-
-            <div class="step-buttons">
-                <button type="button" onclick="prevStep(2)" id="back_button_step3">Back</button>
-                <button type="button" onclick="startConversion()" id="start_conversion">🚀 Start Conversion</button>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p id="created_by">v2.1 | Created by Yoavs5771</p>
-        </div>
+    <!-- Language Switcher Bottom Left -->
+    <div style="position: fixed; bottom: 10px; left: 10px;">
+      <label for="languageSelect" data-i18n="language_label">🌐 Language</label>
+      <select id="languageSelect"></select>
     </div>
 
-    <script>
-        let currentStep = 1;
+    <!-- Step 1: File Upload -->
+    <div class="step-section active" id="step-1">
+      <h2 class="step-title" data-i18n="select_files">Select Files</h2>
+      <input type="file" id="inputFiles" name="inputFiles" multiple />
+      <div class="file-preview" id="filePreview"></div>
+      <div class="step-buttons">
+        <button id="nextStep1" data-i18n="next">Next</button>
+      </div>
+    </div>
 
-        function showStep(step) {
-            document.querySelectorAll('.step-section').forEach(section => section.classList.remove('active'));
-            document.getElementById(`step-${step}`).classList.add('active');
-        }
+    <!-- Step 2: Format Options -->
+    <div class="step-section" id="step-2">
+      <h2 class="step-title" data-i18n="choose_format">Choose Output Format</h2>
+      <div id="formatOptions" class="format-options">
+        <!-- Dynamic checkboxes will be added here -->
+      </div>
 
-        function nextStep(step) {
-            updateSummary();
-            currentStep = step;
-            showStep(step);
-        }
+      <div id="mergeOptionContainer" style="margin-top: 10px;">
+        <label>
+          <input type="checkbox" id="mergeOption" />
+          <span data-i18n="merge_option">🗃️ Merge PDFs into one file</span>
+        </label>
+      </div>
 
-        function prevStep(step) {
-            currentStep = step;
-            showStep(step);
-        }
+      <div class="step-buttons">
+        <button id="prevStep2" data-i18n="back">Back</button>
+        <button id="nextStep2" data-i18n="next">Next</button>
+      </div>
+    </div>
 
-        document.getElementById('inputType').addEventListener('change', function () {
-            if (this.value === 'folder') {
-                document.getElementById('inputFolder').style.display = 'block';
-                document.getElementById('inputFiles').style.display = 'none';
-                document.getElementById('select_folder_label').style.display = 'block';
-                document.getElementById('select_files_label').style.display = 'none';
-            } else {
-                document.getElementById('inputFolder').style.display = 'none';
-                document.getElementById('inputFiles').style.display = 'block';
-                document.getElementById('select_folder_label').style.display = 'none';
-                document.getElementById('select_files_label').style.display = 'block';
-            }
-        });
+    <!-- Step 3: Summary -->
+    <div class="step-section" id="step-3">
+      <h2 class="step-title" data-i18n="summary">Summary</h2>
+      <div id="summary-box">
+        <h5 data-i18n="summary_preview">Summary:</h5>
+        <p id="summaryText"></p>
+      </div>
+      <div class="progress">
+        <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
+      </div>
+      <div class="step-buttons">
+        <button id="prevStep3" data-i18n="back">Back</button>
+        <button id="convertButton" data-i18n="convert_button">Convert</button>
+      </div>
+    </div>
 
-        function updateSummary() {
-            const files = document.getElementById('inputFiles').files;
-            const folder = document.getElementById('inputFolder').files;
-            const outputFormats = Array.from(document.getElementById('outputFormats').selectedOptions).map(opt => opt.value).join(', ');
-            const merge = document.getElementById('mergePDF').checked ? 'Yes' : 'No';
+    <!-- Step 4: Thank You -->
+    <div class="step-section" id="step-4">
+      <h2 class="step-title" data-i18n="done">✅ Conversion Complete</h2>
+      <p data-i18n="thank_you">Thank you for using FileTools. You can support us below:</p>
+      <a href="/privacy" target="_blank" data-i18n="privacy_policy">Privacy Policy</a> |
+      <a href="https://www.buymeacoffee.com/yoavs5771" target="_blank" data-i18n="donate">☕ Donate</a>
+    </div>
 
-            let fileSummary = files.length ? `${files.length} files selected.` : folder.length ? `${folder.length} files in folder.` : 'No files selected.';
+    <!-- Toast Message -->
+    <div class="toast" id="toastBox">Error</div>
 
-            document.getElementById('summary-content').innerHTML = `
-                <p><strong>Files:</strong> ${fileSummary}</p>
-                <p><strong>Output formats:</strong> ${outputFormats}</p>
-                <p><strong>Merge PDFs:</strong> ${merge}</p>
-            `;
-        }
-    </script>
+    <div class="footer">
+      <span data-i18n="created_by">v2.1 | Created by Yoavs5771</span>
+    </div>
+  </div>
+
+  <script src="/static/lang.js"></script>
+  <script src="/static/script.js"></script>
 </body>
 </html>
