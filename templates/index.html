@@ -10,10 +10,13 @@
   <div class="container">
     <h1 data-i18n="title">File Converter Tool</h1>
 
-    <!-- Language Switcher Bottom Left -->
-    <div style="position: fixed; bottom: 10px; left: 10px;">
-      <label for="languageSelect" data-i18n="language_label">🌐 Language</label>
-      <select id="languageSelect"></select>
+    <!-- Language Switcher and Dark Mode Bottom Left -->
+    <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; align-items: center;">
+      <div>
+        <label for="languageSelect" data-i18n="language_label">🌐 Language</label>
+        <select id="languageSelect"></select>
+      </div>
+      <button id="darkModeToggle" class="dark-mode-toggle" data-i18n="dark_mode" title="Toggle Dark Mode">🌙</button>
     </div>
 
     <!-- Step 1: File Upload -->
@@ -21,8 +24,29 @@
       <h2 class="step-title" data-i18n="select_files">Select Files</h2>
       <input type="file" id="inputFiles" name="inputFiles" multiple />
       <div class="file-preview" id="filePreview"></div>
+
+      <div id="pdfToolsContainer" style="display: none; margin-top: 20px;">
+        <h3 data-i18n="pdf_tools">PDF Tools</h3>
+        <div id="mergeOptionContainer">
+          <label>
+            <input type="checkbox" id="mergeOption" />
+            <span data-i18n="merge_option">🗃️ Merge PDFs into one file</span>
+          </label>
+        </div>
+        <div id="splitOptionContainer">
+          <label>
+            <input type="checkbox" id="splitOption" />
+            <span data-i18n="split_option">✂️ Split PDF into multiple files</span>
+          </label>
+        </div>
+        <div id="deletePagesContainer">
+          <label for="deletePagesInput" data-i18n="delete_pages_label">🗑️ Delete pages (e.g., 1,3-5):</label>
+          <input type="text" id="deletePagesInput" placeholder="1,3-5" />
+        </div>
+      </div>
+
       <div class="step-buttons">
-        <button id="nextStep1" data-i18n="next">Next</button>
+        <button id="nextStep1" data-i18n="next" disabled>Next</button>
       </div>
     </div>
 
@@ -31,13 +55,6 @@
       <h2 class="step-title" data-i18n="choose_format">Choose Output Format</h2>
       <div id="formatOptions" class="format-options">
         <!-- Dynamic checkboxes will be added here -->
-      </div>
-
-      <div id="mergeOptionContainer" style="margin-top: 10px;">
-        <label>
-          <input type="checkbox" id="mergeOption" />
-          <span data-i18n="merge_option">🗃️ Merge PDFs into one file</span>
-        </label>
       </div>
 
       <div class="step-buttons">
@@ -74,7 +91,8 @@
     <div class="toast" id="toastBox">Error</div>
 
     <div class="footer">
-      <span data-i18n="created_by">v2.1 | Created by Yoavs5771</span>
+      <span data-i18n="created_by">v2.1 | Created by Yoavs5771</span> | 
+      <a href="/privacy" data-i18n="privacy_policy">Privacy Policy</a>
     </div>
   </div>
 

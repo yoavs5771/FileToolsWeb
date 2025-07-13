@@ -1,20 +1,41 @@
-<!-- Save this as templates/privacy.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Privacy Policy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="privacy_title">Privacy Policy - FileTools</title>
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-<h1>Privacy Policy</h1>
-<p>Your privacy is important to us. This tool runs entirely on the server side and only processes the files you upload for conversion. We do not store, share, or log any files permanently.</p>
+    <div class="container">
+        <h1 data-i18n="privacy_title">Privacy Policy</h1>
+        
+        <p data-i18n="privacy_intro">Your privacy is important to us. This tool runs entirely on the server side and only processes the files you upload for conversion. We do not store, share, or log any files permanently.</p>
 
-<p>Uploaded files are used only for the duration of the session and are removed automatically after conversion or after a short period.</p>
+        <h2 data-i18n="data_processing">Data Processing</h2>
+        <p data-i18n="data_processing_text">Uploaded files are used only for the duration of the session and are removed automatically after conversion or after a short period.</p>
 
-<p>No personal data is collected, and no cookies are used.</p>
+        <h2 data-i18n="data_collection">Data Collection</h2>
+        <p data-i18n="data_collection_text">No personal data is collected, and no cookies are used for tracking purposes.</p>
 
-<p>If you have any questions about this policy, please contact the administrator of the website.</p>
+        <h2 data-i18n="contact_info">Contact Information</h2>
+        <p data-i18n="contact_text">If you have any questions about this policy, please contact the administrator of the website.</p>
 
-<p><a href="/">Back to Home</a></p>
+        <div style="margin-top: 30px;">
+            <a href="/" data-i18n="back_home">← Back to Home</a>
+        </div>
+
+        <!-- Language Switcher -->
+        <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; align-items: center;">
+            <div>
+                <label for="languageSelect" data-i18n="language_label">🌐 Language</label>
+                <select id="languageSelect"></select>
+            </div>
+            <button id="darkModeToggle" class="dark-mode-toggle" data-i18n="dark_mode" title="Toggle Dark Mode">🌙</button>
+        </div>
+    </div>
+
+    <script src="/static/lang.js"></script>
+    <script src="/static/script.js"></script>
 </body>
 </html>

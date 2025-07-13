@@ -15,6 +15,19 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/translations/<language>.json')
+def get_translation(language):
+    try:
+        with open(f'translations/{language}.json', 'r', encoding='utf-8') as f:
+            content = f.read()
+        return content, 200, {'Content-Type': 'application/json; charset=utf-8'}
+    except FileNotFoundError:
+        return jsonify({"error": "Translation not found"}), 404
+
 @app.route('/convert', methods=['POST'])
 def convert():
     if 'files' not in request.files:
@@ -23,7 +36,14 @@ def convert():
     files = request.files.getlist('files')
     output_formats = request.form.getlist('formats[]')
     merge_pdf = request.form.get('merge', 'false') == 'true'
+    split_pdf = request.form.get('split', 'false') == 'true'
     delete_pages = request.form.get('delete_pages')
+
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({"error": "No selected files"}), 400
+
+    if not output_formats and not (merge_pdf or split_pdf or delete_pages):
+        return jsonify({"error": "No action selected. Please choose a format or a PDF tool."}), 400
 
     delete_pages_list = None
     if delete_pages:
@@ -39,15 +59,25 @@ def convert():
         file.save(file_path)
         saved_paths.append(file_path)
 
-    convert_files(
-        file_paths=saved_paths,
-        output_formats=output_formats,
-        output_folder=OUTPUT_FOLDER,
-        merge_pdf=merge_pdf,
-        delete_pages=delete_pages_list
-    )
+    try:
+        output_zip_path = convert_files(
+            file_paths=saved_paths,
+            output_formats=output_formats,
+            output_folder=OUTPUT_FOLDER,
+            merge_pdf=merge_pdf,
+            split_pdf_flag=split_pdf,
+            delete_pages=delete_pages_list
+        )
+        if output_zip_path and os.path.exists(output_zip_path):
+             return send_file(output_zip_path, as_attachment=True, download_name='converted_files.zip')
+        else:
+             # אם אין קובץ להורדה, זה אומר שהפעולה בוצעה אך לא יצרה קובץ (למשל, רק פיצול)
+             return jsonify({"success": True, "message": "Action completed, but no file to download."})
 
-    return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    return jsonify({"error": "Conversion failed for an unknown reason."}), 500
 
 @app.route('/download/<filename>')
 def download_file(filename):

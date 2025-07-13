@@ -1,21 +1,34 @@
 let currentStep = 1;
-const steps = ["step1", "step2", "step3", "step4"];
+const steps = ["step-1", "step-2", "step-3", "step-4"];
 const inputFiles = document.getElementById("inputFiles");
 const filePreview = document.getElementById("filePreview");
-const conversionOptions = document.getElementById("conversionOptions");
-const pdfTools = document.getElementById("pdfTools");
+const formatOptions = document.getElementById("formatOptions");
+const mergeOptionContainer = document.getElementById("mergeOptionContainer");
 const summaryBox = document.getElementById("summary-box");
-const toast = document.getElementById("toast");
-const progressContainer = document.getElementById("progressContainer");
+const toast = document.getElementById("toastBox");
 const progressBar = document.getElementById("progressBar");
 
 let selectedFiles = [];
 let detectedFileType = "";
 
+function showToast(message, isSuccess = false) {
+  toast.textContent = message;
+  toast.className = isSuccess ? "toast success" : "toast";
+  toast.style.display = "block";
+  
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 4000);
+}
+
 function showStep(step) {
-  steps.forEach((id, index) => {
-    document.getElementById(id).classList.toggle("active", index === step - 1);
+  // הסתר את כל השלבים
+  document.querySelectorAll('.step-section').forEach(section => {
+    section.classList.remove('active');
   });
+  
+  // הצג את השלב הנוכחי
+  document.getElementById(`step-${step}`).classList.add('active');
   currentStep = step;
 }
 
@@ -29,159 +42,328 @@ function detectFileType(files) {
   return "mixed";
 }
 
-function showToast(msg, success = false) {
-  toast.innerText = msg;
-  toast.className = "toast" + (success ? " success" : "");
-  toast.style.display = "block";
-  setTimeout(() => (toast.style.display = "none"), 4000);
+// אתחול האפליקציה
+document.addEventListener("DOMContentLoaded", () => {
+  // הסתר את כל השלבים חוץ מהראשון
+  showStep(1);
+  
+  // אתחל את מערכת השפות
+  initializeLanguageSystem();
+  
+  // אתחל מצב חשוך
+  initializeDarkMode();
+  
+  // הוסף מאזיני אירועים
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // אירועי קבצים
+  inputFiles.addEventListener("change", handleFileChange);
+  
+  // אירועי ניווט
+  document.getElementById("nextStep1").addEventListener("click", goToStep2);
+  document.getElementById("prevStep2").addEventListener("click", () => showStep(1));
+  document.getElementById("nextStep2").addEventListener("click", goToStep3);
+  document.getElementById("prevStep3").addEventListener("click", () => showStep(2));
+  document.getElementById("convertButton").addEventListener("click", handleConversion);
 }
 
-inputFiles.addEventListener("change", (e) => {
+function handleFileChange(e) {
   selectedFiles = Array.from(e.target.files);
-  filePreview.innerText = selectedFiles.map(f => f.name).join("\n");
-  detectedFileType = detectFileType(selectedFiles);
-  document.getElementById("nextBtn1").disabled = selectedFiles.length === 0;
-});
+  const nextButton = document.getElementById("nextStep1");
+  const pdfToolsContainer = document.getElementById("pdfToolsContainer");
+  
+  if (selectedFiles.length > 0) {
+    filePreview.textContent = selectedFiles.map(f => `• ${f.name}`).join("\n");
+    detectedFileType = detectFileType(selectedFiles);
+    nextButton.disabled = false;
 
-document.getElementById("nextBtn1").addEventListener("click", () => {
-  renderConversionOptions();
+    if (detectedFileType === 'pdf') {
+      pdfToolsContainer.style.display = 'block';
+    } else {
+      pdfToolsContainer.style.display = 'none';
+    }
+
+  } else {
+    filePreview.textContent = "";
+    nextButton.disabled = true;
+    pdfToolsContainer.style.display = 'none';
+  }
+}
+
+function goToStep2() {
+  if (selectedFiles.length === 0) {
+    showToast("אנא בחר קבצים תחילה");
+    return;
+  }
+  renderFormatOptions();
   showStep(2);
-});
+}
 
-document.getElementById("backBtn2").addEventListener("click", () => showStep(1));
-document.getElementById("nextBtn2").addEventListener("click", () => {
+function goToStep3() {
+  const selectedFormats = document.querySelectorAll('input[name="formatOption"]:checked');
+  const pdfToolsUsed = detectedFileType === 'pdf' && (
+    document.getElementById("mergeOption")?.checked ||
+    document.getElementById("splitOption")?.checked ||
+    document.getElementById("deletePagesInput")?.value.trim()
+  );
+  
+  if (selectedFormats.length === 0 && !pdfToolsUsed) {
+    showToast("אנא בחר לפחות פורמט אחד או כלי PDF");
+    return;
+  }
   renderSummary();
   showStep(3);
-});
-document.getElementById("backBtn3").addEventListener("click", () => showStep(2));
+}
 
-document.getElementById("convertBtn").addEventListener("click", async () => {
-  progressContainer.style.display = "block";
+async function handleConversion() {
   progressBar.style.width = "10%";
-  progressBar.innerText = "10%";
+  progressBar.textContent = "10%";
 
   const formData = new FormData();
   selectedFiles.forEach(file => formData.append("files", file));
 
-  const format = document.querySelector('input[name="formatOption"]:checked');
-  if (format) formData.append("format", format.value);
+  const selectedFormats = [];
+  document.querySelectorAll('input[name="formatOption"]:checked').forEach(checkbox => {
+    selectedFormats.push(checkbox.value);
+  });
+  
+  const pdfToolsUsed = detectedFileType === 'pdf' && (
+    document.getElementById("mergeOption")?.checked ||
+    document.getElementById("splitOption")?.checked ||
+    document.getElementById("deletePagesInput")?.value.trim()
+  );
+  
+  if (selectedFormats.length === 0 && !pdfToolsUsed) {
+    showToast("אנא בחר לפחות פורמט אחד או כלי PDF");
+    return;
+  }
+  
+  selectedFormats.forEach(format => formData.append("formats[]", format));
 
   if (detectedFileType === "pdf") {
-    if (document.getElementById("mergePdf").checked) formData.append("merge", "1");
-    if (document.getElementById("splitPdf").checked) formData.append("split", "1");
-    if (document.getElementById("deletePages").checked) formData.append("delete_pages", "1");
+    if (document.getElementById("mergeOption")?.checked) {
+      formData.append("merge", "true");
+    }
+    if (document.getElementById("splitOption")?.checked) {
+      formData.append("split", "true");
+    }
+    const deletePages = document.getElementById("deletePagesInput")?.value;
+    if (deletePages) {
+      formData.append("delete_pages", deletePages);
+    }
   }
 
   progressBar.style.width = "40%";
-  progressBar.innerText = "40%";
+  progressBar.textContent = "40%";
 
   try {
     const res = await fetch("/convert", { method: "POST", body: formData });
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "converted_output.zip";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    
+    progressBar.style.width = "80%";
+    progressBar.textContent = "80%";
+    
+    if (res.ok) {
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "שגיאה לא ידועה מהשרת");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "converted_files.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
 
-    progressBar.style.width = "100%";
-    progressBar.innerText = "100%";
-    showStep(4);
+      progressBar.style.width = "100%";
+      progressBar.textContent = "100%";
+      showStep(4);
+      showToast("ההמרה הושלמה בהצלחה!", true);
+    } else {
+      const errorData = await res.json().catch(() => ({ error: "תגובת שגיאה לא תקינה מהשרת" }));
+      throw new Error(errorData.error || "שגיאה בהמרה");
+    }
   } catch (err) {
-    showToast("שגיאה בביצוע ההמרה.");
+    showToast("שגיאה בביצוע ההמרה: " + err.message);
     console.error(err);
+    progressBar.style.width = "0%";
+    progressBar.textContent = "0%";
   }
-});
+}
 
-function renderConversionOptions() {
-  const map = {
+function renderFormatOptions() {
+  const formatMap = {
     word: ["PDF", "TXT", "HTML"],
     ppt: ["PDF"],
     excel: ["PDF", "CSV"],
     image: ["PDF", "JPG", "PNG", "BMP", "TIFF"],
-    pdf: [] // ניהול בכלים אחרים
+    pdf: ["TXT", "DOC", "JPG"], // אפשרויות עבור PDF
+    mixed: ["PDF"] // אפשרות ברירת מחדל לקבצים מעורבים
   };
 
-  const options = map[detectedFileType] || [];
-  pdfTools.style.display = detectedFileType === "pdf" ? "block" : "none";
+  const options = formatMap[detectedFileType] || formatMap.mixed;
+  
+  // הצג/הסתר אפשרות מיזוג עבור PDF
+  if (mergeOptionContainer) {
+    mergeOptionContainer.style.display = detectedFileType === "pdf" ? "block" : "none";
+  }
 
-  conversionOptions.innerHTML = "";
+  formatOptions.innerHTML = "";
+  
   if (options.length > 0) {
     options.forEach(fmt => {
-      const id = `opt_${fmt}`;
-      conversionOptions.innerHTML += `
-        <label>
-          <input type="radio" name="formatOption" id="${id}" value="${fmt}" />
-          ${fmt}
-        </label><br/>
+      const id = `format_${fmt}`;
+      const labelElement = document.createElement("label");
+      labelElement.innerHTML = `
+        <input type="checkbox" name="formatOption" id="${id}" value="${fmt}" />
+        <span>${fmt}</span>
       `;
+      formatOptions.appendChild(labelElement);
     });
   } else {
-    conversionOptions.innerHTML = "<p>אין אפשרויות להמרה לקובץ זה.</p>";
+    formatOptions.innerHTML = "<p>אין אפשרויות המרה זמינות לסוג קובץ זה</p>";
   }
 }
 
 function renderSummary() {
+  const selectedFormats = [];
+  document.querySelectorAll('input[name="formatOption"]:checked').forEach(checkbox => {
+    selectedFormats.push(checkbox.value);
+  });
+
   let summary = `
-    <h5>סיכום לפני המרה:</h5>
-    <p><strong>קבצים שנבחרו:</strong><br>${selectedFiles.map(f => f.name).join("<br>")}</p>
-    <p><strong>סוג קובץ:</strong> ${detectedFileType}</p>
+    <strong>קבצים שנבחרו:</strong><br>
+    ${selectedFiles.map(f => `• ${f.name}`).join("<br>")}<br><br>
+    <strong>סוג קובץ מזוהה:</strong> ${getFileTypeDisplayName(detectedFileType)}<br><br>
   `;
 
-  const format = document.querySelector('input[name="formatOption"]:checked');
-  if (format) summary += `<p><strong>פורמט נבחר:</strong> ${format.value}</p>`;
-
-  if (detectedFileType === "pdf") {
-    summary += `<p><strong>כלי PDF:</strong><ul>`;
-    if (document.getElementById("mergePdf").checked) summary += "<li>מיזוג קבצים</li>";
-    if (document.getElementById("splitPdf").checked) summary += "<li>פיצול קובץ</li>";
-    if (document.getElementById("deletePages").checked) summary += "<li>מחיקת עמודים</li>";
-    summary += "</ul></p>";
+  if (selectedFormats.length > 0) {
+    summary += `<strong>פורמטים נבחרים:</strong><br>• ${selectedFormats.join("<br>• ")}<br><br>`;
   }
 
-  summaryBox.innerHTML = summary;
+  if (detectedFileType === "pdf" && document.getElementById("mergeOption") && document.getElementById("mergeOption").checked) {
+    summary += `<strong>אפשרויות נוספות:</strong><br>• מיזוג קבצי PDF לקובץ אחד<br>`;
+  }
+
+  document.getElementById("summaryText").innerHTML = summary;
 }
 
-// תרגום שפות
-document.getElementById("languageSelect").addEventListener("change", (e) => {
-  const lang = e.target.value;
-  localStorage.setItem("lang", lang);
-  loadTranslations(lang);
+function getFileTypeDisplayName(type) {
+  const displayNames = {
+    word: "מסמכי Word",
+    ppt: "מצגות PowerPoint", 
+    excel: "גיליונות Excel",
+    image: "תמונות",
+    pdf: "קבצי PDF",
+    mixed: "קבצים מעורבים"
+  };
+  return displayNames[type] || type;
+}
+
+// אתחול האפליקציה
+window.addEventListener("DOMContentLoaded", () => {
+  // הסתר את כל השלבים חוץ מהראשון
+  showStep(1);
+  
+  // אתחל את מערכת השפות
+  initializeLanguageSystem();
 });
 
-function loadTranslations(lang) {
-  fetch(`/translations/${lang}.json`)
-    .then(res => res.json())
-    .then(dict => {
-      document.querySelectorAll("[data-i18n]").forEach(el => {
-        const key = el.getAttribute("data-i18n");
-        if (dict[key]) el.innerText = dict[key];
+function initializeLanguageSystem() {
+  // הגדרת השפות הזמינות
+  const languages = {
+    en: "English", 
+    he: "עברית", 
+    fr: "Français", 
+    es: "Español",
+    ru: "Русский", 
+    zh: "中文", 
+    ar: "العربية", 
+    hi: "हिन्दी",
+    fa: "فارسی", 
+    pt: "Português"
+  };
+
+  const languageSelect = document.getElementById("languageSelect");
+  languageSelect.innerHTML = ''; // ניקוי אפשרויות קיימות למניעת כפילויות
+  
+  // מלא את רשימת השפות
+  Object.entries(languages).forEach(([code, name]) => {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = name;
+    languageSelect.appendChild(option);
+  });
+
+  // קבע שפת ברירת מחדל
+  const savedLanguage = localStorage.getItem("selectedLanguage");
+  const browserLanguage = navigator.language.slice(0, 2);
+  const defaultLanguage = savedLanguage || (languages[browserLanguage] ? browserLanguage : "en");
+  
+  languageSelect.value = defaultLanguage;
+  loadLanguage(defaultLanguage);
+
+  // האזן לשינוי שפה
+  languageSelect.addEventListener("change", (e) => {
+    const selectedLanguage = e.target.value;
+    localStorage.setItem("selectedLanguage", selectedLanguage);
+    loadLanguage(selectedLanguage);
+  });
+}
+
+function loadLanguage(languageCode) {
+  fetch(`/translations/${languageCode}.json`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(translations => {
+      // עדכן את כל הטקסטים
+      document.querySelectorAll("[data-i18n]").forEach(element => {
+        const key = element.getAttribute("data-i18n");
+        if (translations[key]) {
+          element.textContent = translations[key];
+        }
       });
 
-      document.documentElement.dir = ["ar", "he", "fa"].includes(lang) ? "rtl" : "ltr";
+      // הגדר כיוון הטקסט
+      const rtlLanguages = ["he", "ar", "fa"];
+      const htmlElement = document.documentElement;
+      
+      if (rtlLanguages.includes(languageCode)) {
+        htmlElement.setAttribute("dir", "rtl");
+        htmlElement.setAttribute("lang", languageCode);
+      } else {
+        htmlElement.setAttribute("dir", "ltr");
+        htmlElement.setAttribute("lang", languageCode);
+      }
+    })
+    .catch(error => {
+      console.error(`Error loading language ${languageCode}:`, error);
+      showToast(`שגיאה בטעינת השפה: ${languageCode}`);
     });
 }
 
-function initLang() {
-  const langSelect = document.getElementById("languageSelect");
-  const langs = {
-    en: "English", he: "עברית", fr: "Français", ru: "Русский",
-    ar: "العربية", zh: "中文", fa: "فارسی", es: "Español", pt: "Português", hi: "हिन्दी"
-  };
-  for (const [code, label] of Object.entries(langs)) {
-    const opt = document.createElement("option");
-    opt.value = code;
-    opt.innerText = label;
-    langSelect.appendChild(opt);
+function initializeDarkMode() {
+  const darkModeToggle = document.getElementById("darkModeToggle");
+  const savedDarkMode = localStorage.getItem("darkMode") === "true";
+  
+  if (savedDarkMode) {
+    document.body.classList.add("dark-mode");
+    darkModeToggle.textContent = "☀️";
   }
-
-  const lang = localStorage.getItem("lang") || "en";
-  langSelect.value = lang;
-  loadTranslations(lang);
+  
+  darkModeToggle.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDarkMode = document.body.classList.contains("dark-mode");
+    darkModeToggle.textContent = isDarkMode ? "☀️" : "🌙";
+    localStorage.setItem("darkMode", isDarkMode);
+  });
 }
-
-window.onload = () => {
-  initLang();
-};
