@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="privacy_title">Privacy Policy - FileTools</title>
+    <link rel="stylesheet" href="/static/style_minimal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        
+        <div class="header">
+            <h1 data-i18n="privacy_title">🔒 Privacy Policy</h1>
+            <p>FileTools - Your privacy matters</p>
+            
+            <div class="language-selector">
+                <select id="languageSelect">
+                    <option value="en">🇺🇸 English</option>
+                    <option value="he">🇮🇱 עברית</option>
+                    <option value="ar">🇸🇦 العربية</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="fr">🇫🇷 Français</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div style="line-height: 1.7; color: #555;">
+                <p data-i18n="privacy_intro">Your privacy is important to us. This tool runs entirely on the server side and only processes the files you upload for conversion. We do not store, share, or log any files permanently.</p>
+
+                <h2 style="color: #4a90e2; margin: 25px 0 15px 0;" data-i18n="data_processing">📋 Data Processing</h2>
+                <p data-i18n="data_processing_text">Uploaded files are used only for the duration of the session and are removed automatically after conversion or after a short period.</p>
+
+                <h2 style="color: #4a90e2; margin: 25px 0 15px 0;" data-i18n="data_collection">📊 Data Collection</h2>
+                <p data-i18n="data_collection_text">No personal data is collected, and no cookies are used for tracking purposes.</p>
+
+                <h2 style="color: #4a90e2; margin: 25px 0 15px 0;" data-i18n="file_security">🔐 File Security</h2>
+                <p data-i18n="file_security_text">All file processing happens on our secure server. Files are automatically deleted after processing.</p>
+
+                <h2 style="color: #4a90e2; margin: 25px 0 15px 0;" data-i18n="contact_info">📞 Contact Information</h2>
+                <p data-i18n="contact_text">If you have any questions about this policy, please contact the administrator of the website.</p>
+            </div>
+
+            <div style="margin-top: 40px; text-align: center;">
+                <a href="/" style="display: inline-block; background: #4a90e2; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; transition: background 0.2s ease;">
+                    <i class="fas fa-arrow-left"></i> <span data-i18n="back_home">Back to Home</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-links">
+                <a href="https://github.com/yoavs5771/FileToolsWeb" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://buymeacoffee.com/yoavs5771" target="_blank" data-i18n="donate">
+                    <i class="fas fa-coffee"></i> Buy me a coffee
+                </a>
+            </div>
+            <p data-i18n="created_by">v2.2 | Created with ❤️ by Yoavs5771</p>
+        </div>
+    </div>
+
+    <!-- Dark Mode Toggle -->
+    <button class="dark-mode-toggle" id="darkModeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <script>
+        // Simple language switching for privacy page
+        let currentLanguage = 'en';
+        let translations = {};
+
+        const languageSelect = document.getElementById('languageSelect');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+
+        // Privacy-specific translations
+        const privacyTranslations = {
+            'en': {
+                'privacy_title': '🔒 Privacy Policy',
+                'privacy_intro': 'Your privacy is important to us. This tool runs entirely on the server side and only processes the files you upload for conversion. We do not store, share, or log any files permanently.',
+                'data_processing': '📋 Data Processing',
+                'data_processing_text': 'Uploaded files are used only for the duration of the session and are removed automatically after conversion or after a short period.',
+                'data_collection': '📊 Data Collection',
+                'data_collection_text': 'No personal data is collected, and no cookies are used for tracking purposes.',
+                'file_security': '🔐 File Security',
+                'file_security_text': 'All file processing happens on our secure server. Files are automatically deleted after processing.',
+                'contact_info': '📞 Contact Information',
+                'contact_text': 'If you have any questions about this policy, please contact the administrator of the website.',
+                'back_home': 'Back to Home',
+                'donate': 'Buy me a coffee',
+                'created_by': 'v2.2 | Created with ❤️ by Yoavs5771'
+            },
+            'he': {
+                'privacy_title': '🔒 מדיניות פרטיות',
+                'privacy_intro': 'הפרטיות שלכם חשובה לנו. הכלי הזה פועל במלואו בשרת ומעבד רק את הקבצים שאתם מעלים להמרה. איננו שומרים, משתפים או רושמים קבצים באופן קבוע.',
+                'data_processing': '📋 עיבוד נתונים',
+                'data_processing_text': 'קבצים שהועלו משמשים רק למשך הפעלה והוסרים אוטומטית לאחר ההמרה או לאחר תקופה קצרה.',
+                'data_collection': '📊 איסוף נתונים',
+                'data_collection_text': 'לא נאספים נתונים אישיים, ולא נעשה שימוש בעוגיות למטרות מעקב.',
+                'file_security': '🔐 אבטחת קבצים',
+                'file_security_text': 'כל עיבוד הקבצים מתרחש בשרת המאובטח שלנו. קבצים נמחקים אוטומטית לאחר העיבוד.',
+                'contact_info': '📞 פרטי יצירת קשר',
+                'contact_text': 'אם יש לכם שאלות כלשהן לגבי מדיניות זו, אנא צרו קשר עם מנהל האתר.',
+                'back_home': 'חזרה לעמוד הבית',
+                'donate': 'קנו לי קפה',
+                'created_by': 'v2.2 | נוצר עם ❤️ על ידי Yoavs5771'
+            },
+            'ar': {
+                'privacy_title': '🔒 سياسة الخصوصية',
+                'privacy_intro': 'خصوصيتك مهمة بالنسبة لنا. تعمل هذه الأداة بالكامل على جانب الخادم وتقوم فقط بمعالجة الملفات التي تقوم بتحميلها للتحويل.',
+                'data_processing': '📋 معالجة البيانات',
+                'data_processing_text': 'يتم استخدام الملفات المحملة فقط أثناء الجلسة ويتم حذفها تلقائياً بعد التحويل.',
+                'data_collection': '📊 جمع البيانات',
+                'data_collection_text': 'لا يتم جمع بيانات شخصية، ولا تستخدم ملفات تعريف الارتباط لأغراض التتبع.',
+                'file_security': '🔐 أمان الملفات',
+                'file_security_text': 'تتم معالجة جميع الملفات على خادمنا الآمن. يتم حذف الملفات تلقائياً بعد المعالجة.',
+                'contact_info': '📞 معلومات الاتصال',
+                'contact_text': 'إذا كان لديك أي أسئلة حول هذه السياسة، يرجى الاتصال بمدير الموقع.',
+                'back_home': 'العودة للصفحة الرئيسية',
+                'donate': 'اشتري لي قهوة',
+                'created_by': 'v2.2 | تم إنشاؤه بـ ❤️ بواسطة Yoavs5771'
+            },
+            'es': {
+                'privacy_title': '🔒 Política de Privacidad',
+                'privacy_intro': 'Tu privacidad es importante para nosotros. Esta herramienta funciona completamente en el servidor y solo procesa los archivos que subes para conversión.',
+                'data_processing': '📋 Procesamiento de Datos',
+                'data_processing_text': 'Los archivos subidos se usan solo durante la sesión y se eliminan automáticamente después de la conversión.',
+                'data_collection': '📊 Recolección de Datos',
+                'data_collection_text': 'No se recopilan datos personales y no se usan cookies para propósitos de seguimiento.',
+                'file_security': '🔐 Seguridad de Archivos',
+                'file_security_text': 'Todo el procesamiento de archivos ocurre en nuestro servidor seguro. Los archivos se eliminan automáticamente después del procesamiento.',
+                'contact_info': '📞 Información de Contacto',
+                'contact_text': 'Si tienes preguntas sobre esta política, por favor contacta al administrador del sitio web.',
+                'back_home': 'Volver al Inicio',
+                'donate': 'Cómprame un café',
+                'created_by': 'v2.2 | Creado con ❤️ por Yoavs5771'
+            },
+            'fr': {
+                'privacy_title': '🔒 Politique de Confidentialité',
+                'privacy_intro': 'Votre confidentialité est importante pour nous. Cet outil fonctionne entièrement côté serveur et ne traite que les fichiers que vous téléchargez pour conversion.',
+                'data_processing': '📋 Traitement des Données',
+                'data_processing_text': 'Les fichiers téléchargés ne sont utilisés que pendant la session et supprimés automatiquement après conversion.',
+                'data_collection': '📊 Collecte de Données',
+                'data_collection_text': 'Aucune donnée personnelle n\'est collectée et aucun cookie n\'est utilisé à des fins de suivi.',
+                'file_security': '🔐 Sécurité des Fichiers',
+                'file_security_text': 'Tout le traitement des fichiers se fait sur notre serveur sécurisé. Les fichiers sont supprimés automatiquement après traitement.',
+                'contact_info': '📞 Informations de Contact',
+                'contact_text': 'Si vous avez des questions sur cette politique, veuillez contacter l\'administrateur du site web.',
+                'back_home': 'Retour à l\'Accueil',
+                'donate': 'Offrez-moi un café',
+                'created_by': 'v2.2 | Créé avec ❤️ par Yoavs5771'
+            }
+        };
+
+        function updateUI() {
+            const langTranslations = privacyTranslations[currentLanguage] || privacyTranslations['en'];
+            
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                const translation = langTranslations[key] || key;
+                element.textContent = translation;
+            });
+            
+            // Update direction for RTL languages
+            if (['he', 'ar'].includes(currentLanguage)) {
+                document.body.classList.add('rtl');
+            } else {
+                document.body.classList.remove('rtl');
+            }
+        }
+
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('selectedLanguage', lang);
+            languageSelect.value = lang;
+            updateUI();
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            
+            const icon = darkModeToggle.querySelector('i');
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // Event listeners
+        languageSelect.addEventListener('change', (e) => {
+            changeLanguage(e.target.value);
+        });
+
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+            const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+            
+            if (savedDarkMode) {
+                document.body.classList.add('dark-mode');
+                darkModeToggle.querySelector('i').className = 'fas fa-sun';
+            }
+            
+            changeLanguage(savedLanguage);
+        });
+    </script>
+</body>
+</html>

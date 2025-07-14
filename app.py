@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_file, jsonify
 from werkzeug.utils import secure_filename
-from converter import convert_files
+from converter_working import convert_files
 import os
 import uuid
 
@@ -13,11 +13,19 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
+    return render_template('index_minimal.html')
+
+@app.route('/simple')
+def simple_ui():
+    return render_template('index_simple.html')
+
+@app.route('/complex')
+def complex_ui():
     return render_template('index.html')
 
 @app.route('/privacy')
 def privacy():
-    return render_template('privacy.html')
+    return render_template('privacy_minimal.html')
 
 @app.route('/translations/<language>.json')
 def get_translation(language):
@@ -30,7 +38,10 @@ def get_translation(language):
 
 @app.route('/convert', methods=['POST'])
 def convert():
+    print("=== Convert endpoint called ===")
+    
     if 'files' not in request.files:
+        print("No files in request")
         return jsonify({"error": "No files provided"}), 400
 
     files = request.files.getlist('files')
@@ -39,10 +50,17 @@ def convert():
     split_pdf = request.form.get('split', 'false') == 'true'
     delete_pages = request.form.get('delete_pages')
 
+    print(f"Received {len(files)} files")
+    print(f"Output formats: {output_formats}")
+    print(f"Merge PDF: {merge_pdf}")
+    print(f"Split PDF: {split_pdf}")
+
     if not files or all(f.filename == '' for f in files):
+        print("No files selected")
         return jsonify({"error": "No selected files"}), 400
 
     if not output_formats and not (merge_pdf or split_pdf or delete_pages):
+        print("No action selected")
         return jsonify({"error": "No action selected. Please choose a format or a PDF tool."}), 400
 
     delete_pages_list = None
@@ -54,11 +72,23 @@ def convert():
 
     saved_paths = []
     for file in files:
-        filename = secure_filename(file.filename)
+        original_filename = file.filename
+        filename = secure_filename(original_filename)
+        
+        # Make sure we keep the file extension
+        if not filename:
+            filename = "file"
+        if '.' not in filename and '.' in original_filename:
+            extension = original_filename.rsplit('.', 1)[1].lower()
+            filename = f"{filename}.{extension}"
+        
         file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}_{filename}")
         file.save(file_path)
         saved_paths.append(file_path)
+        print(f"Saved file: {original_filename} -> {file_path}")
 
+    print(f"Starting conversion with {len(saved_paths)} files...")
+    
     try:
         output_zip_path = convert_files(
             file_paths=saved_paths,
@@ -68,14 +98,28 @@ def convert():
             split_pdf_flag=split_pdf,
             delete_pages=delete_pages_list
         )
-        if output_zip_path and os.path.exists(output_zip_path):
-             return send_file(output_zip_path, as_attachment=True, download_name='converted_files.zip')
+        
+        print(f"Conversion result: {output_zip_path}")
+        
+        if output_zip_path and os.path.exists(output_zip_path) and os.path.getsize(output_zip_path) > 0:
+            print(f"Sending file: {output_zip_path} (size: {os.path.getsize(output_zip_path)} bytes)")
+            return send_file(output_zip_path, as_attachment=True, download_name='converted_files.zip')
         else:
-             # אם אין קובץ להורדה, זה אומר שהפעולה בוצעה אך לא יצרה קובץ (למשל, רק פיצול)
-             return jsonify({"success": True, "message": "Action completed, but no file to download."})
+            print("No output file generated or file is empty")
+            return jsonify({"error": "No output file was generated. Please check your input files and try again."}), 400
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        error_message = str(e)
+        
+        # Provide more user-friendly error messages
+        if "LibreOffice not found" in error_message:
+            error_message = "Document conversion requires LibreOffice. Please install LibreOffice or use the alternative DOCX converter for DOCX files only."
+        elif "PyMuPDF" in error_message:
+            error_message = "PDF to image conversion requires PyMuPDF. Please check your installation."
+        elif "Failed to convert" in error_message:
+            error_message = f"Conversion failed: {error_message}"
+        
+        return jsonify({"error": error_message}), 500
     
     return jsonify({"error": "Conversion failed for an unknown reason."}), 500
 

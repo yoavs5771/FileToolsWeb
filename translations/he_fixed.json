@@ -1,6 +1,6 @@
 {
   "title": "כלי המרת קבצים",
-  "subtitle": "המירו את הקבצים שלכם בקלות ובמהירות",
+  "subtitle": "המירו את הקבצים שלכם בקלות",
   "drag_drop": "גררו ושחררו קבצים כאן",
   "or_click": "או לחצו לעיון",
   "supported": "נתמכים:",
@@ -19,7 +19,5 @@
   "conversion_error": "ההמרה נכשלה",
   "no_file_error": "אין קובץ להורדה",
   "select_action": "אנא בחרו פעולה",
-  "language_label": "שפה",
-  "privacy_title": "מדיניות פרטיות",
-  "back_home": "חזרה לעמוד הבית"
+  "language_label": "שפה"
 }
