@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_file, jsonify
 from werkzeug.utils import secure_filename
-from converter_working import convert_files
+from converter import convert_files
 import os
 import uuid
 
@@ -13,7 +13,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
-    return render_template('index_minimal.html')
+    return render_template('index.html')
 
 @app.route('/simple')
 def simple_ui():

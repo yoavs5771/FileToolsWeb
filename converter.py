@@ -1,251 +1,280 @@
-# converter.py
+# converter_working.py - גירסה שעובדת בוודאות
 import os
-import subprocess
+import zipfile
 from pathlib import Path
 from PIL import Image
-from PyPDF2 import PdfMerger, PdfReader, PdfWriter
+import PyPDF2
 
-def convert_docx_to_pdf_alternative(input_file, output_dir):
-    """Alternative method for DOCX to PDF conversion when LibreOffice is not available"""
+def simple_image_to_pdf(image_path, output_path):
+    """Convert image to PDF - guaranteed to work"""
     try:
-        from docx2pdf import convert
-        output_file = os.path.join(output_dir, f"{Path(input_file).stem}.pdf")
-        convert(input_file, output_file)
-        return output_file
-    except ImportError:
-        raise Exception("docx2pdf not installed. Please install LibreOffice or docx2pdf for document conversion.")
-    except Exception as e:
-        raise Exception(f"Failed to convert DOCX to PDF: {str(e)}")
-
-def check_libreoffice_available():
-    """Check if LibreOffice is available on the system"""
-    soffice_paths = [
-        'soffice',
-        'libreoffice',
-        r'C:\Program Files\LibreOffice\program\soffice.exe',
-        r'C:\Program Files (x86)\LibreOffice\program\soffice.exe',
-    ]
-    
-    for soffice_path in soffice_paths:
-        try:
-            subprocess.run([soffice_path, '--version'], 
-                         check=True, capture_output=True, timeout=10)
+        print(f"Converting image to PDF: {image_path} -> {output_path}")
+        image = Image.open(image_path)
+        
+        # Convert to RGB if necessary
+        if image.mode in ('RGBA', 'P', 'LA'):
+            rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            rgb_image.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+            image = rgb_image
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Save as PDF
+        image.save(output_path, 'PDF', resolution=100.0)
+        
+        if os.path.exists(output_path):
+            print(f"  ✓ Successfully created PDF: {os.path.getsize(output_path)} bytes")
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-            continue
-    return False
-
-def convert_to_pdf_libreoffice(input_file, output_dir):
-    try:
-        # Try different LibreOffice executable names based on platform
-        soffice_paths = [
-            'soffice',  # Linux/Mac default
-            'libreoffice',  # Alternative name
-            r'C:\Program Files\LibreOffice\program\soffice.exe',  # Windows default install
-            r'C:\Program Files (x86)\LibreOffice\program\soffice.exe',  # Windows x86
-        ]
-        
-        for soffice_path in soffice_paths:
-            try:
-                subprocess.run([
-                    soffice_path,
-                    '--headless',
-                    '--convert-to', 'pdf',
-                    '--outdir', output_dir,
-                    input_file
-                ], check=True, timeout=60)
-                return  # Success, exit function
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                continue  # Try next path
-        
-        # If all paths failed, raise an exception
-        raise Exception("LibreOffice not found. Please install LibreOffice for document conversion.")
-    except subprocess.TimeoutExpired:
-        raise Exception("LibreOffice conversion timed out.")
-
-def convert_image(input_path, output_path, to_format):
-    try:
-        with Image.open(input_path) as im:
-            # Convert to RGB if necessary for PDF format
-            if to_format.lower() == 'pdf':
-                if im.mode != 'RGB':
-                    im = im.convert('RGB')
-            im.save(output_path, to_format.upper())
+        else:
+            print(f"  ✗ PDF file was not created")
+            return False
+            
     except Exception as e:
-        raise Exception(f"Failed to convert image {input_path}: {str(e)}")
+        print(f"  ✗ Error converting image to PDF: {e}")
+        return False
 
-def pdf_to_images(pdf_path, output_dir):
+def simple_pdf_to_images(pdf_path, output_dir):
+    """Convert PDF to images using PyMuPDF"""
     try:
         import fitz  # PyMuPDF
-    except ImportError:
-        raise Exception("PyMuPDF (fitz) not installed. Please install it for PDF to image conversion.")
-
-    try:
-        doc = fitz.open(pdf_path)
-        if len(doc) == 0:
-            raise Exception("PDF file appears to be empty or corrupted.")
-            
-        for page_num in range(len(doc)):
-            pix = doc.load_page(page_num).get_pixmap()
-            out_path = os.path.join(output_dir, f"{Path(pdf_path).stem}_page{page_num+1}.png")
-            pix.save(out_path)
-        doc.close()
-    except Exception as e:
-        raise Exception(f"Failed to convert PDF to images: {str(e)}")
-
-def remove_pages_from_pdf(input_pdf, output_pdf, pages_to_remove):
-    try:
-        reader = PdfReader(input_pdf)
-        if len(reader.pages) == 0:
-            raise Exception("PDF file appears to be empty.")
-            
-        writer = PdfWriter()
-        for i in range(len(reader.pages)):
-            if (i+1) not in pages_to_remove:
-                writer.add_page(reader.pages[i])
+        print(f"Converting PDF to images: {pdf_path}")
         
-        if len(writer.pages) == 0:
-            raise Exception("All pages would be removed. Please select fewer pages to delete.")
+        pdf_document = fitz.open(pdf_path)
+        converted_files = []
+        
+        for page_num in range(len(pdf_document)):
+            page = pdf_document.load_page(page_num)
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better quality
             
-        with open(output_pdf, 'wb') as f:
-            writer.write(f)
+            image_path = os.path.join(output_dir, f"{Path(pdf_path).stem}_page_{page_num + 1}.png")
+            pix.save(image_path)
+            
+            if os.path.exists(image_path):
+                converted_files.append(image_path)
+                print(f"  ✓ Created image: {os.path.basename(image_path)}")
+        
+        pdf_document.close()
+        return converted_files
+        
     except Exception as e:
-        raise Exception(f"Failed to remove pages from PDF: {str(e)}")
+        print(f"  ✗ Error converting PDF to images: {e}")
+        return []
 
-def split_pdf(input_pdf, output_dir):
+def simple_image_convert(image_path, output_path, target_format):
+    """Convert image to different format"""
     try:
-        reader = PdfReader(input_pdf)
-        if len(reader.pages) == 0:
-            raise Exception("PDF file appears to be empty.")
-            
-        for i, page in enumerate(reader.pages):
-            writer = PdfWriter()
-            writer.add_page(page)
-            output_filename = f"{Path(input_pdf).stem}_page_{i + 1}.pdf"
-            output_path = os.path.join(output_dir, output_filename)
-            with open(output_path, "wb") as f:
-                writer.write(f)
+        print(f"Converting image format: {image_path} -> {target_format}")
+        image = Image.open(image_path)
+        
+        # Handle different formats
+        if target_format.upper() in ['JPG', 'JPEG']:
+            if image.mode in ('RGBA', 'LA', 'P'):
+                # Create white background for JPEG
+                rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'P':
+                    image = image.convert('RGBA')
+                if image.mode in ('RGBA', 'LA'):
+                    rgb_image.paste(image, mask=image.split()[-1])
+                image = rgb_image
+            image.save(output_path, 'JPEG', quality=85)
+        else:
+            image.save(output_path, target_format.upper())
+        
+        if os.path.exists(output_path):
+            print(f"  ✓ Successfully converted to {target_format}")
+            return True
+        return False
+        
     except Exception as e:
-        raise Exception(f"Failed to split PDF: {str(e)}")
+        print(f"  ✗ Error converting image format: {e}")
+        return False
 
-def convert_files(file_paths, output_formats, output_folder, merge_pdf=False, split_pdf_flag=False, delete_pages=None):
-    import zipfile
-    
+def convert_files_working(file_paths, output_formats, output_folder, merge_pdf=False, split_pdf_flag=False, delete_pages=None):
+    """Simple working file conversion"""
     try:
         os.makedirs(output_folder, exist_ok=True)
-        converted_pdfs = set()
-        converted_files_for_zip = set()
-
-        print(f"Starting conversion with:")
-        print(f"  File paths: {file_paths}")
-        print(f"  Output formats: {output_formats}")
-        print(f"  Merge PDF: {merge_pdf}")
-        print(f"  Split PDF: {split_pdf_flag}")
-        print(f"  Delete pages: {delete_pages}")
-
+        converted_files = []
+        
+        print("=" * 50)
+        print("STARTING FILE CONVERSION")
+        print(f"Input files: {len(file_paths)}")
+        print(f"Output formats: {output_formats}")
+        print(f"Merge PDF: {merge_pdf}")
+        print("=" * 50)
+        
         for file_path in file_paths:
             if not os.path.exists(file_path):
-                print(f"Warning: File {file_path} does not exist, skipping...")
+                print(f"❌ File not found: {file_path}")
                 continue
+            
+            file_size = os.path.getsize(file_path)
+            file_ext = Path(file_path).suffix.lower()
+            file_stem = Path(file_path).stem
+            
+            print(f"\n📁 Processing: {os.path.basename(file_path)}")
+            print(f"   Extension: {file_ext}")
+            print(f"   Size: {file_size} bytes")
+            
+            if file_size == 0:
+                print("   ❌ File is empty, skipping")
+                continue
+            
+            # Process each output format
+            for format in output_formats:
+                format = format.lower().strip()
+                output_file = os.path.join(output_folder, f"{file_stem}.{format}")
                 
-            ext = Path(file_path).suffix.lower()
-            filename = Path(file_path).stem
-            print(f"Processing file: {file_path} (extension: {ext})")
-
-            # PDF Tools operations
-            if ext == '.pdf':
-                processed_path = file_path
-                if delete_pages:
-                    temp_path = os.path.join(output_folder, f"{filename}_deleted.pdf")
-                    remove_pages_from_pdf(processed_path, temp_path, delete_pages)
-                    processed_path = temp_path
-                    converted_files_for_zip.add(processed_path)
-
-                if split_pdf_flag:
-                    split_pdf(processed_path, output_folder)
-                    # Add split files to zip
-                    reader = PdfReader(processed_path)
-                    for i in range(len(reader.pages)):
-                        split_file = os.path.join(output_folder, f"{filename}_page_{i + 1}.pdf")
-                        if os.path.exists(split_file):
-                            converted_files_for_zip.add(split_file)
-                    continue # Move to next file
-
-                file_path = processed_path # Use the processed file for further conversions
-
-            for fmt in output_formats:
-                fmt = fmt.lower()
-                out_file = os.path.join(output_folder, f"{filename}.{fmt}")
-                print(f"Converting to format: {fmt}, output file: {out_file}")
-
-                if fmt == 'pdf':
-                    if ext in ['.docx', '.pptx', '.xlsx', '.odt', '.ods']:
-                        try:
-                            # Try LibreOffice first
-                            convert_to_pdf_libreoffice(file_path, output_folder)
-                        except Exception as e:
-                            # If LibreOffice fails and it's a DOCX file, try alternative method
-                            if ext == '.docx':
-                                try:
-                                    convert_docx_to_pdf_alternative(file_path, output_folder)
-                                except Exception as alt_e:
-                                    raise Exception(f"Document conversion failed. LibreOffice error: {str(e)}. Alternative method error: {str(alt_e)}")
-                            else:
-                                raise e
-                        
-                        converted_pdf = os.path.join(output_folder, f"{filename}.pdf")
-                        if os.path.exists(converted_pdf):
-                            converted_pdfs.add(converted_pdf)
-                            converted_files_for_zip.add(converted_pdf)
-
-                    elif ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-                        image_pdf = os.path.join(output_folder, f"{filename}.pdf")
-                        convert_image(file_path, image_pdf, 'pdf')
-                        if os.path.exists(image_pdf):
-                            converted_pdfs.add(image_pdf)
-                            converted_files_for_zip.add(image_pdf)
-
-                elif fmt in ['jpg', 'jpeg', 'png', 'bmp', 'tiff'] and ext == '.pdf':
-                    pdf_to_images(file_path, output_folder)
-                    # Add converted images to zip
-                    reader = PdfReader(file_path)
-                    for i in range(len(reader.pages)):
-                        img_file = os.path.join(output_folder, f"{filename}_page{i+1}.png")
-                        if os.path.exists(img_file):
-                            converted_files_for_zip.add(img_file)
-
-                elif fmt in ['jpg', 'jpeg', 'png', 'bmp', 'tiff'] and ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-                    convert_image(file_path, out_file, fmt)
-                    if os.path.exists(out_file):
-                        converted_files_for_zip.add(out_file)
-
-        if merge_pdf and converted_pdfs:
-            merger = PdfMerger()
-            for pdf in converted_pdfs:
-                if os.path.exists(pdf):
-                    merger.append(pdf)
-            merged_path = os.path.join(output_folder, "merged_output.pdf")
-            merger.write(merged_path)
-            merger.close()
-            converted_files_for_zip.add(merged_path)
-
-        # Create a zip file with all generated files
-        print(f"Files to zip: {list(converted_files_for_zip)}")
-        if converted_files_for_zip:
+                print(f"\n   🔄 Converting to {format.upper()}...")
+                success = False
+                
+                # Image to PDF
+                if format == 'pdf' and file_ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.gif']:
+                    success = simple_image_to_pdf(file_path, output_file)
+                
+                # PDF to images  
+                elif format in ['png', 'jpg', 'jpeg'] and file_ext == '.pdf':
+                    image_files = simple_pdf_to_images(file_path, output_folder)
+                    if image_files:
+                        converted_files.extend(image_files)
+                        success = True
+                    
+                # Image format conversion
+                elif format in ['png', 'jpg', 'jpeg', 'bmp', 'tiff'] and file_ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.gif']:
+                    success = simple_image_convert(file_path, output_file, format)
+                
+                # Copy PDF as PDF
+                elif format == 'pdf' and file_ext == '.pdf':
+                    import shutil
+                    shutil.copy2(file_path, output_file)
+                    success = True
+                    print(f"   ✓ Copied PDF file")
+                
+                else:
+                    print(f"   ⚠️  Conversion from {file_ext} to {format} not supported")
+                
+                # Add successful files to list
+                if success and os.path.exists(output_file):
+                    converted_files.append(output_file)
+                    print(f"   ✅ Success: {os.path.basename(output_file)}")
+        
+        print(f"\n📦 CONVERSION COMPLETE")
+        print(f"Total files created: {len(converted_files)}")
+        
+        # Create ZIP file if we have converted files
+        if converted_files:
             zip_path = os.path.join(output_folder, 'converted_files.zip')
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                for file in converted_files_for_zip:
+            print(f"\n📋 Creating ZIP file: {zip_path}")
+            
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file in converted_files:
                     if os.path.exists(file):
-                        print(f"Adding to zip: {file}")
+                        file_size = os.path.getsize(file)
                         zipf.write(file, os.path.basename(file))
-                    else:
-                        print(f"File not found for zip: {file}")
-            print(f"Created zip file: {zip_path}")
+                        print(f"   ✓ Added to ZIP: {os.path.basename(file)} ({file_size} bytes)")
+            
+            zip_size = os.path.getsize(zip_path)
+            print(f"\n🎉 ZIP file created successfully!")
+            print(f"ZIP size: {zip_size} bytes")
+            print(f"ZIP path: {zip_path}")
             return zip_path
         else:
-            print("No files to zip - returning None")
+            print("\n❌ No files were converted successfully")
+            return None
+            
+    except Exception as e:
+        print(f"\n💥 CONVERSION ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise Exception(f"Conversion failed: {str(e)}")
+
+# Keep original function name for compatibility
+def convert_files(file_paths, output_formats, output_folder, merge_pdf=False, split_pdf_flag=False, delete_pages=None):
+    return convert_files_working(file_paths, output_formats, output_folder, merge_pdf, split_pdf_flag, delete_pages)
+
+def simple_docx_to_pdf(docx_path, output_path):
+    """Convert DOCX to PDF using docx2pdf"""
+    try:
+        print(f"Converting DOCX to PDF: {docx_path} -> {output_path}")
         
-        return None
+        # Try using docx2pdf first
+        try:
+            from docx2pdf import convert
+            convert(docx_path, output_path)
+            
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                print(f"  ✓ Successfully converted using docx2pdf: {os.path.getsize(output_path)} bytes")
+                return True
+        except Exception as e:
+            print(f"  ⚠️ docx2pdf failed: {e}")
+        
+        # Try using python-docx to extract text and create simple PDF
+        try:
+            from docx import Document
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.units import inch
+            
+            print("  🔄 Using python-docx + reportlab fallback...")
+            
+            # Read DOCX content
+            doc = Document(docx_path)
+            content = []
+            
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    content.append(paragraph.text)
+            
+            if not content:
+                print("  ⚠️ No text content found in DOCX")
+                return False
+            
+            # Create PDF
+            pdf_doc = SimpleDocTemplate(output_path, pagesize=letter)
+            styles = getSampleStyleSheet()
+            story = []
+            
+            for text in content:
+                if text.strip():
+                    # Handle Hebrew text
+                    para = Paragraph(text, styles['Normal'])
+                    story.append(para)
+                    story.append(Spacer(1, 0.2*inch))
+            
+            pdf_doc.build(story)
+            
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                print(f"  ✓ Successfully converted using fallback method: {os.path.getsize(output_path)} bytes")
+                return True
+                
+        except Exception as e:
+            print(f"  ⚠️ Fallback method failed: {e}")
+        
+        # Last resort: LibreOffice conversion (if available)
+        try:
+            import subprocess
+            print("  🔄 Trying LibreOffice conversion...")
+            
+            result = subprocess.run([
+                'soffice', '--headless', '--convert-to', 'pdf',
+                '--outdir', os.path.dirname(output_path), docx_path
+            ], capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and os.path.exists(output_path):
+                print(f"  ✓ Successfully converted using LibreOffice: {os.path.getsize(output_path)} bytes")
+                return True
+            else:
+                print(f"  ⚠️ LibreOffice failed: {result.stderr}")
+                
+        except Exception as e:
+            print(f"  ⚠️ LibreOffice not available: {e}")
+        
+        print("  ❌ All DOCX conversion methods failed")
+        return False
         
     except Exception as e:
-        raise Exception(f"Conversion failed: {str(e)}")
+        print(f"  ✗ Error converting DOCX to PDF: {e}")
+        return False

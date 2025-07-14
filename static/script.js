@@ -1,597 +1,280 @@
-// Fixed and cleaned script.js
-let currentStep = 1;
-const steps = ["step-1", "step-2", "step-3", "step-4"];
-const inputFiles = document.getElementById("inputFiles");
-const filePreview = document.getElementById("filePreview");
-const fileList = document.getElementById("fileList");
-const formatOptions = document.getElementById("formatOptions");
-const mergeOptionContainer = document.getElementById("mergeOptionContainer");
-const summaryBox = document.getElementById("summary-box");
-const toast = document.getElementById("toastBox");
-const progressBar = document.getElementById("progressBar");
-const uploadPlaceholder = document.getElementById("uploadPlaceholder");
-const uploadArea = document.querySelector(".upload-area");
-
+// JavaScript מעוצב ומשופר עם אנימציות
 let selectedFiles = [];
-let detectedFileType = "";
-
-// Language Support
-const supportedLanguages = ['en', 'he', 'ar', 'es', 'fr', 'pt', 'ru', 'zh', 'hi', 'fa'];
 let currentLanguage = 'en';
 let translations = {};
 
-// Enhanced toast function
-function showToast(message, isSuccess = false, title = null) {
-  if (!toast) return;
+// Elements
+const uploadArea = document.getElementById('uploadArea');
+const inputFiles = document.getElementById('inputFiles');
+const fileList = document.getElementById('fileList');
+const fileItems = document.getElementById('fileItems');
+const formatOptions = document.getElementById('formatOptions');
+const formatGrid = document.getElementById('formatGrid');
+const pdfTools = document.getElementById('pdfTools');
+const convertSection = document.getElementById('convertSection');
+const convertBtn = document.getElementById('convertBtn');
+const progressContainer = document.getElementById('progressContainer');
+const progressFill = document.getElementById('progressFill');
+const toastBox = document.getElementById('toastBox');
+const languageSelect = document.getElementById('languageSelect');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const loadingOverlay = document.getElementById('loadingOverlay');
+
+// Format options with enhanced icons
+const formatData = {
+  'pdf': { icon: 'fas fa-file-pdf', name: 'PDF', color: '#dc3545' },
+  'docx': { icon: 'fas fa-file-word', name: 'Word', color: '#2b579a' },
+  'pptx': { icon: 'fas fa-file-powerpoint', name: 'PowerPoint', color: '#d24726' },
+  'xlsx': { icon: 'fas fa-file-excel', name: 'Excel', color: '#107c41' },
+  'jpg': { icon: 'fas fa-image', name: 'JPG', color: '#ff6b35' },
+  'png': { icon: 'fas fa-image', name: 'PNG', color: '#4285f4' },
+  'gif': { icon: 'fas fa-image', name: 'GIF', color: '#ff9500' },
+  'bmp': { icon: 'fas fa-image', name: 'BMP', color: '#9b59b6' }
+};
+
+// Enhanced toast function with animations
+function showToast(message, type = 'info') {
+  const toastIcon = toastBox.querySelector('.toast-icon i');
+  const toastTitle = toastBox.querySelector('.toast-title');
+  const toastMessage = toastBox.querySelector('.toast-message');
   
-  const toastTitle = toast.querySelector('.toast-title');
-  const toastMessage = toast.querySelector('.toast-message');
-  const toastIcon = toast.querySelector('.toast-icon i');
-  
-  if (toastTitle) toastTitle.textContent = title || (isSuccess ? 'Success' : 'Error');
-  if (toastMessage) toastMessage.textContent = message;
-  
-  // Update icon
-  if (toastIcon) {
-    toastIcon.className = isSuccess ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+  // Set icon and title based on type
+  switch(type) {
+    case 'success':
+      toastIcon.className = 'fas fa-check-circle';
+      toastTitle.textContent = '✅ Success';
+      toastBox.className = 'toast success show';
+      break;
+    case 'error':
+      toastIcon.className = 'fas fa-exclamation-triangle';
+      toastTitle.textContent = '❌ Error';
+      toastBox.className = 'toast error show';
+      break;
+    case 'warning':
+      toastIcon.className = 'fas fa-exclamation-circle';
+      toastTitle.textContent = '⚠️ Warning';
+      toastBox.className = 'toast warning show';
+      break;
+    default:
+      toastIcon.className = 'fas fa-info-circle';
+      toastTitle.textContent = 'ℹ️ Info';
+      toastBox.className = 'toast show';
   }
   
-  toast.className = isSuccess ? "toast success show" : "toast show";
+  toastMessage.textContent = message;
+  
+  // Add success animation for success toasts
+  if (type === 'success') {
+    toastBox.classList.add('success-animation');
+    setTimeout(() => toastBox.classList.remove('success-animation'), 1000);
+  }
   
   setTimeout(() => {
-    toast.classList.remove('show');
+    toastBox.classList.remove('show');
   }, 5000);
 }
 
-function showStep(step) {
-  // הסתר את כל השלבים
-  document.querySelectorAll('.step-section').forEach(section => {
-    section.classList.remove('active');
-  });
-  
-  // הצג את השלב הנוכחי
-  const stepElement = document.getElementById(`step-${step}`);
-  if (stepElement) {
-    stepElement.classList.add('active');
-  }
-  currentStep = step;
-}
-
-// Enhanced file size formatting
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Get file icon based on extension
-function getFileIcon(fileName) {
-  const ext = fileName.split('.').pop().toLowerCase();
-  const iconMap = {
-    'pdf': 'fas fa-file-pdf',
-    'doc': 'fas fa-file-word',
-    'docx': 'fas fa-file-word',
-    'ppt': 'fas fa-file-powerpoint',
-    'pptx': 'fas fa-file-powerpoint',
-    'xls': 'fas fa-file-excel',
-    'xlsx': 'fas fa-file-excel',
-    'jpg': 'fas fa-file-image',
-    'jpeg': 'fas fa-file-image',
-    'png': 'fas fa-file-image',
-    'gif': 'fas fa-file-image',
-    'bmp': 'fas fa-file-image',
-    'tiff': 'fas fa-file-image',
-    'mp4': 'fas fa-file-video',
-    'avi': 'fas fa-file-video',
-    'txt': 'fas fa-file-alt',
-    'zip': 'fas fa-file-archive',
-    'rar': 'fas fa-file-archive'
-  };
-  return iconMap[ext] || 'fas fa-file';
-}
-
-// Enhanced file preview
-function updateFilePreview() {
-  if (!filePreview || !fileList) return;
+// Enhanced file handling with animations
+function handleFiles(files) {
+  selectedFiles = Array.from(files);
   
   if (selectedFiles.length === 0) {
-    filePreview.style.display = 'none';
-    if (uploadPlaceholder) uploadPlaceholder.style.display = 'block';
-    const nextBtn = document.getElementById('nextStep1');
-    if (nextBtn) nextBtn.disabled = true;
+    hideAllSections();
     return;
   }
+  
+  displayFiles();
+  showFormatOptions();
+  showSections();
+}
 
-  if (uploadPlaceholder) uploadPlaceholder.style.display = 'none';
-  filePreview.style.display = 'block';
+function hideAllSections() {
+  fileList.classList.add('hidden');
+  formatOptions.classList.add('hidden');
+  pdfTools.classList.add('hidden');
+  convertSection.classList.add('hidden');
+}
+
+function showSections() {
+  fileList.classList.remove('hidden');
+  convertSection.classList.remove('hidden');
+}
+
+function displayFiles() {
+  fileItems.innerHTML = '';
   
-  // Update file count and total size
-  const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
-  const fileCountEl = document.getElementById('fileCount');
-  const totalSizeEl = document.getElementById('totalSize');
-  
-  if (fileCountEl) fileCountEl.textContent = selectedFiles.length;
-  if (totalSizeEl) totalSizeEl.textContent = formatFileSize(totalSize);
-  
-  // Clear existing file list
-  fileList.innerHTML = '';
-  
-  // Add each file to the list
   selectedFiles.forEach((file, index) => {
     const fileItem = document.createElement('div');
-    fileItem.className = 'file-item';
+    fileItem.className = 'file-item fade-in-up';
+    
+    const extension = file.name.split('.').pop().toLowerCase();
+    const format = formatData[extension] || { icon: 'fas fa-file', name: 'File', color: '#6c757d' };
+    
     fileItem.innerHTML = `
-      <div class="file-icon">
-        <i class="${getFileIcon(file.name)}"></i>
+      <div class="file-icon" style="color: ${format.color}">
+        <i class="${format.icon}"></i>
       </div>
       <div class="file-info">
-        <div class="file-name">${file.name}</div>
-        <div class="file-size">${formatFileSize(file.size)}</div>
+        <h4>${file.name}</h4>
+        <p>${(file.size / 1024 / 1024).toFixed(2)} MB • ${format.name}</p>
       </div>
       <button class="file-remove" onclick="removeFile(${index})" title="Remove file">
         <i class="fas fa-times"></i>
       </button>
     `;
-    fileList.appendChild(fileItem);
+    
+    fileItems.appendChild(fileItem);
   });
   
-  const nextBtn = document.getElementById('nextStep1');
-  if (nextBtn) nextBtn.disabled = false;
+  // Add animation delay for staggered effect
+  document.querySelectorAll('.file-item').forEach((item, index) => {
+    item.style.animationDelay = `${index * 0.1}s`;
+  });
 }
 
-// Remove file function
 function removeFile(index) {
-  selectedFiles.splice(index, 1);
-  updateFilePreview();
-  updatePDFToolsVisibility();
-}
-
-// Enhanced drag and drop functionality
-function setupDragAndDrop() {
-  if (!uploadArea) return;
-  
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    uploadArea.addEventListener(eventName, preventDefaults, false);
-  });
-
-  ['dragenter', 'dragover'].forEach(eventName => {
-    uploadArea.addEventListener(eventName, highlight, false);
-  });
-
-  ['dragleave', 'drop'].forEach(eventName => {
-    uploadArea.addEventListener(eventName, unhighlight, false);
-  });
-
-  uploadArea.addEventListener('drop', handleDrop, false);
-}
-
-function preventDefaults(e) {
-  e.preventDefault();
-  e.stopPropagation();
-}
-
-function highlight() {
-  if (uploadArea) uploadArea.classList.add('dragover');
-}
-
-function unhighlight() {
-  if (uploadArea) uploadArea.classList.remove('dragover');
-}
-
-function handleDrop(e) {
-  const dt = e.dataTransfer;
-  const files = dt.files;
-  handleFiles(Array.from(files));
-}
-
-// Enhanced file handling
-function handleFiles(files) {
-  selectedFiles = [...selectedFiles, ...files];
-  updateFilePreview();
-  updatePDFToolsVisibility();
-  showToast(`${files.length} file(s) added successfully!`, true, 'Files Added');
-}
-
-// Clear all files
-function clearAllFiles() {
-  selectedFiles = [];
-  updateFilePreview();
-  updatePDFToolsVisibility();
-  showToast('All files cleared', true, 'Files Cleared');
-}
-
-// Enhanced PDF tools visibility
-function updatePDFToolsVisibility() {
-  const hasPDFs = selectedFiles.some(file => 
-    file.name.toLowerCase().endsWith('.pdf')
-  );
-  
-  const pdfToolsContainer = document.getElementById('pdfToolsContainer');
-  if (pdfToolsContainer) {
-    if (hasPDFs) {
-      pdfToolsContainer.style.display = 'block';
-      pdfToolsContainer.style.animation = 'fadeInUp 0.5s ease-out';
-    } else {
-      pdfToolsContainer.style.display = 'none';
-    }
+  const fileItem = document.querySelectorAll('.file-item')[index];
+  if (fileItem) {
+    fileItem.style.animation = 'fadeOut 0.3s ease-out forwards';
+    setTimeout(() => {
+      selectedFiles.splice(index, 1);
+      handleFiles(selectedFiles);
+      showToast('File removed successfully', 'success');
+    }, 300);
   }
 }
 
-function detectFileType(files) {
-  if (!files || files.length === 0) return "unknown";
+function showFormatOptions() {
+  formatGrid.innerHTML = '';
   
-  const extensions = Array.from(files).map(f => f.name.split('.').pop().toLowerCase());
+  // Detect file types
+  const hasImages = selectedFiles.some(f => /\.(jpg|jpeg|png|gif|bmp|tiff|webp)$/i.test(f.name));
+  const hasPDFs = selectedFiles.some(f => /\.pdf$/i.test(f.name));
+  const hasDocuments = selectedFiles.some(f => /\.(docx|pptx|xlsx)$/i.test(f.name));
   
-  if (extensions.every(ext => ["pdf"].includes(ext))) return "pdf";
-  if (extensions.every(ext => ["docx", "doc"].includes(ext))) return "word";
-  if (extensions.every(ext => ["pptx", "ppt"].includes(ext))) return "ppt";
-  if (extensions.every(ext => ["xlsx", "xls", "csv"].includes(ext))) return "excel";
-  if (extensions.every(ext => ["jpg", "jpeg", "png", "bmp", "gif", "tiff", "webp"].includes(ext))) return "image";
-  return "mixed";
-}
-
-// Enhanced format options generation
-function generateFormatOptions() {
-  if (!formatOptions) return;
-  
-  const formatGroups = {
-    'Documents': {
-      formats: ['pdf', 'docx', 'txt'],
-      icon: 'fas fa-file-alt',
-      description: 'Document formats'
-    },
-    'Images': {
-      formats: ['jpg', 'png', 'bmp', 'tiff', 'webp'],
-      icon: 'fas fa-image',
-      description: 'Image formats'
-    },
-    'Archives': {
-      formats: ['zip'],
-      icon: 'fas fa-file-archive',
-      description: 'Compressed files'
-    }
-  };
-
-  formatOptions.innerHTML = '';
-
-  Object.entries(formatGroups).forEach(([groupName, group]) => {
-    const groupDiv = document.createElement('div');
-    groupDiv.className = 'format-group';
-    groupDiv.innerHTML = `<h4><i class="${group.icon}"></i> ${groupName}</h4>`;
-    
-    const formatsDiv = document.createElement('div');
-    formatsDiv.className = 'format-group-items';
-    
-    group.formats.forEach(format => {
-      const label = document.createElement('label');
-      label.className = 'format-option';
-      label.innerHTML = `
-        <input type="checkbox" name="formats" value="${format}">
-        <div class="format-icon">
-          <i class="${getFormatIcon(format)}"></i>
-        </div>
-        <span>${format.toUpperCase()}</span>
-        <div class="format-description">${getFormatDescription(format)}</div>
-      `;
-      formatsDiv.appendChild(label);
-    });
-    
-    groupDiv.appendChild(formatsDiv);
-    formatOptions.appendChild(groupDiv);
-  });
-}
-
-function getFormatIcon(format) {
-  const iconMap = {
-    'pdf': 'fas fa-file-pdf',
-    'docx': 'fas fa-file-word',
-    'txt': 'fas fa-file-alt',
-    'jpg': 'fas fa-file-image',
-    'png': 'fas fa-file-image',
-    'bmp': 'fas fa-file-image',
-    'tiff': 'fas fa-file-image',
-    'webp': 'fas fa-file-image',
-    'zip': 'fas fa-file-archive'
-  };
-  return iconMap[format] || 'fas fa-file';
-}
-
-function getFormatDescription(format) {
-  const descriptions = {
-    'pdf': 'Portable Document',
-    'docx': 'Word Document',
-    'txt': 'Plain Text',
-    'jpg': 'JPEG Image',
-    'png': 'PNG Image',
-    'bmp': 'Bitmap Image',
-    'tiff': 'TIFF Image',
-    'webp': 'WebP Image',
-    'zip': 'ZIP Archive'
-  };
-  return descriptions[format] || 'File Format';
-}
-
-// Enhanced summary generation
-function updateSummary() {
-  const selectedFormats = Array.from(document.querySelectorAll('input[name="formats"]:checked'))
-    .map(cb => cb.value);
-  
-  const summaryFiles = document.getElementById('summaryFiles');
-  const summaryOperations = document.getElementById('summaryOperations');
-  const summaryOutput = document.getElementById('summaryOutput');
-  
-  // Files summary
-  if (summaryFiles) {
-    summaryFiles.innerHTML = selectedFiles.map(file => `
-      <div class="summary-file-item">
-        <i class="${getFileIcon(file.name)}"></i>
-        <span>${file.name}</span>
-        <span class="file-size">${formatFileSize(file.size)}</span>
-      </div>
-    `).join('');
+  // Show format options
+  if (hasImages || hasDocuments) {
+    createFormatOption('pdf', formatData.pdf);
+  }
+  if (hasPDFs || hasDocuments) {
+    createFormatOption('jpg', formatData.jpg);
+    createFormatOption('png', formatData.png);
+  }
+  if (hasImages || hasPDFs) {
+    createFormatOption('docx', formatData.docx);
   }
   
-  // Operations summary
-  const operations = [];
-  if (selectedFormats.length > 0) {
-    operations.push(`Convert to: ${selectedFormats.join(', ').toUpperCase()}`);
+  // Always add these basic conversions
+  if (hasImages) {
+    createFormatOption('png', formatData.png);
+    createFormatOption('jpg', formatData.jpg);
   }
   
-  const mergeOption = document.getElementById('mergeOption');
-  const splitOption = document.getElementById('splitOption');
-  const deletePagesInput = document.getElementById('deletePagesInput');
-  
-  if (mergeOption && mergeOption.checked) {
-    operations.push('Merge PDFs into one file');
-  }
-  if (splitOption && splitOption.checked) {
-    operations.push('Split PDF into separate pages');
-  }
-  if (deletePagesInput && deletePagesInput.value) {
-    operations.push(`Delete pages: ${deletePagesInput.value}`);
-  }
-  
-  if (summaryOperations) {
-    summaryOperations.innerHTML = operations.length > 0 
-      ? operations.map(op => `<div class="operation-item"><i class="fas fa-check"></i> ${op}</div>`).join('')
-      : '<div class="no-operations">No additional operations selected</div>';
-  }
-  
-  // Output summary
-  const outputFiles = selectedFiles.length * (selectedFormats.length || 1);
-  if (summaryOutput) {
-    summaryOutput.innerHTML = `
-      <div class="output-info">
-        <i class="fas fa-download"></i>
-        <span>Expected output: ${outputFiles} file(s) in a ZIP archive</span>
-      </div>
-    `;
-  }
-}
-
-// Enhanced loading and progress
-function showLoading(show = true) {
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  if (loadingOverlay) {
-    loadingOverlay.style.display = show ? 'block' : 'none';
-  }
-}
-
-function updateProgress(percentage, status = '') {
-  const progressBar = document.getElementById('progressBar');
-  const progressText = progressBar ? progressBar.querySelector('.progress-text') : null;
-  const progressStatus = document.getElementById('progressStatus');
-  
-  if (progressBar) {
-    progressBar.style.width = percentage + '%';
-  }
-  if (progressText) {
-    progressText.textContent = percentage + '%';
-  }
-  
-  if (progressStatus && status) {
-    progressStatus.textContent = status;
-  }
-}
-
-// Language Support Functions
-async function loadTranslation(lang) {
-  try {
-    const response = await fetch(`/translations/${lang}.json`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (error) {
-    console.error(`Failed to load translation for ${lang}:`, error);
-  }
-  return null;
-}
-
-async function changeLanguage(lang) {
-  if (!supportedLanguages.includes(lang)) {
-    lang = 'en';
-  }
-  
-  const translation = await loadTranslation(lang);
-  if (translation) {
-    translations = translation;
-    currentLanguage = lang;
-    updatePageTexts();
-    localStorage.setItem('selectedLanguage', lang);
-  }
-}
-
-function updatePageTexts() {
-  document.querySelectorAll('[data-i18n]').forEach(element => {
-    const key = element.getAttribute('data-i18n');
-    if (translations[key]) {
-      if (element.tagName === 'INPUT' && element.type === 'text') {
-        element.placeholder = translations[key];
-      } else {
-        element.textContent = translations[key];
-      }
-    }
-  });
-  
-  // Update document title
-  if (translations.title) {
-    document.title = translations.title;
-  }
-  
-  // Update document direction for RTL languages
-  const rtlLanguages = ['he', 'ar', 'fa'];
-  document.documentElement.dir = rtlLanguages.includes(currentLanguage) ? 'rtl' : 'ltr';
-}
-
-function setupLanguageSelector() {
-  const languageSelect = document.getElementById('languageSelect');
-  if (!languageSelect) return;
-  
-  // Populate language options
-  const languageNames = {
-    'en': 'English',
-    'he': 'עברית',
-    'ar': 'العربية',
-    'es': 'Español',
-    'fr': 'Français',
-    'pt': 'Português',
-    'ru': 'Русский',
-    'zh': '中文',
-    'hi': 'हिन्दी',
-    'fa': 'فارسی'
-  };
-  
-  languageSelect.innerHTML = '';
-  supportedLanguages.forEach(lang => {
-    const option = document.createElement('option');
-    option.value = lang;
-    option.textContent = languageNames[lang] || lang;
-    languageSelect.appendChild(option);
-  });
-  
-  // Set saved language or default
-  const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
-  languageSelect.value = savedLanguage;
-  changeLanguage(savedLanguage);
-  
-  // Add event listener
-  languageSelect.addEventListener('change', (e) => {
-    changeLanguage(e.target.value);
-  });
-}
-
-// Dark Mode Functions
-function setupDarkMode() {
-  const darkModeToggle = document.getElementById('darkModeToggle');
-  if (!darkModeToggle) return;
-  
-  // Check saved preference or default to light mode
-  const isDarkMode = localStorage.getItem('darkMode') === 'true';
-  if (isDarkMode) {
-    document.body.classList.add('dark-mode');
-    darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+  // Show PDF tools if PDFs are selected
+  if (hasPDFs) {
+    pdfTools.classList.remove('hidden');
   } else {
-    darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+    pdfTools.classList.add('hidden');
   }
   
-  // Add event listener
-  darkModeToggle.addEventListener('click', () => {
-    const isCurrentlyDark = document.body.classList.contains('dark-mode');
-    
-    if (isCurrentlyDark) {
-      document.body.classList.remove('dark-mode');
-      darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-      localStorage.setItem('darkMode', 'false');
-    } else {
-      document.body.classList.add('dark-mode');
-      darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-      localStorage.setItem('darkMode', 'true');
-    }
-  });
+  formatOptions.classList.remove('hidden');
 }
 
-// Navigation Functions
-function goToStep2() {
+function createFormatOption(format, data) {
+  const option = document.createElement('div');
+  option.className = 'format-option';
+  option.onclick = () => toggleFormat(format, option);
+  
+  option.innerHTML = `
+    <input type="checkbox" value="${format}">
+    <i class="${data.icon}"></i>
+    <span>${data.name}</span>
+  `;
+  
+  formatGrid.appendChild(option);
+}
+
+function toggleFormat(format, element) {
+  const checkbox = element.querySelector('input');
+  checkbox.checked = !checkbox.checked;
+  element.classList.toggle('selected', checkbox.checked);
+}
+
+function togglePDFOption(optionName) {
+  const checkbox = document.getElementById(optionName);
+  const option = checkbox.closest('.format-option');
+  
+  checkbox.checked = !checkbox.checked;
+  option.classList.toggle('selected', checkbox.checked);
+  
+  if (optionName === 'split' && checkbox.checked) {
+    document.getElementById('deleteSection').classList.remove('hidden');
+  } else if (optionName === 'split' && !checkbox.checked) {
+    document.getElementById('deleteSection').classList.add('hidden');
+  }
+}
+
+// Enhanced convert files function
+async function startConversion() {
+  const selectedFormats = Array.from(document.querySelectorAll('.format-option.selected input[value]')).map(input => input.value);
+  const merge = document.getElementById('merge').checked;
+  const split = document.getElementById('split').checked;
+  const deletePages = document.getElementById('deletePages').value;
+  
+  if (selectedFormats.length === 0 && !merge && !split) {
+    showToast('Please select an action or format', 'warning');
+    return;
+  }
+  
   if (selectedFiles.length === 0) {
-    showToast("Please select at least one file", false, "No Files Selected");
+    showToast('Please select files first', 'warning');
     return;
   }
-  generateFormatOptions();
-  showStep(2);
-}
-
-function goToStep3() {
-  const selectedFormats = document.querySelectorAll('input[name="formats"]:checked');
-  const pdfToolsUsed = selectedFiles.some(f => f.name.toLowerCase().endsWith('.pdf')) && (
-    document.getElementById("mergeOption")?.checked ||
-    document.getElementById("splitOption")?.checked ||
-    document.getElementById("deletePagesInput")?.value.trim()
-  );
   
-  if (selectedFormats.length === 0 && !pdfToolsUsed) {
-    showToast("Please select at least one output format or PDF operation", false, "No Action Selected");
-    return;
-  }
-  updateSummary();
-  showStep(3);
-}
-
-function handleFileChange(e) {
-  handleFiles(Array.from(e.target.files));
-}
-
-// Conversion Function
-async function handleConversion() {
   // Show loading overlay
-  showLoading(true);
-  
-  // Show conversion progress section
-  const conversionProgress = document.querySelector('.conversion-progress');
-  if (conversionProgress) {
-    conversionProgress.style.display = 'block';
-  }
-  
-  updateProgress(10, 'Preparing files...');
+  loadingOverlay.classList.remove('hidden');
   
   const formData = new FormData();
-  selectedFiles.forEach(file => formData.append('files', file));
-
-  // Get selected formats
-  const selectedFormats = Array.from(document.querySelectorAll('input[name="formats"]:checked'))
-    .map(cb => cb.value);
-  selectedFormats.forEach(format => formData.append('formats[]', format));
-
-  // PDF Tools
-  const mergeOption = document.getElementById("mergeOption");
-  const splitOption = document.getElementById("splitOption");
-  const deletePagesInput = document.getElementById("deletePagesInput");
-
-  if (mergeOption?.checked) formData.append('merge', 'true');
-  if (splitOption?.checked) formData.append('split', 'true');
-  if (deletePagesInput?.value) formData.append('delete_pages', deletePagesInput.value);
-
+  selectedFiles.forEach(file => {
+    formData.append('files', file);
+  });
+  
+  selectedFormats.forEach(format => {
+    formData.append('formats[]', format);
+  });
+  
+  if (merge) formData.append('merge', 'true');
+  if (split) formData.append('split', 'true');
+  if (deletePages) formData.append('delete_pages', deletePages);
+  
+  // Disable button and show progress
+  convertBtn.disabled = true;
+  convertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting...';
+  progressContainer.classList.remove('hidden');
+  
+  // Animate progress bar
+  let progress = 0;
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 15;
+    if (progress > 90) progress = 90;
+    progressFill.style.width = progress + '%';
+  }, 500);
+  
   try {
-    updateProgress(30, 'Uploading files...');
-    
     const response = await fetch('/convert', {
       method: 'POST',
       body: formData
     });
-
-    updateProgress(70, 'Converting files...');
-
+    
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+    
     if (response.ok) {
-      updateProgress(90, 'Finalizing...');
-      
-      // Check if response is a file download
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/zip')) {
-        // Handle file download
-        const blob = await response.blob();
+      const blob = await response.blob();
+      if (blob.size > 0) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = url;
         a.download = 'converted_files.zip';
         document.body.appendChild(a);
@@ -599,87 +282,175 @@ async function handleConversion() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        updateProgress(100, 'Download started!');
-        setTimeout(() => {
-          showLoading(false);
-          showStep(4);
-          showToast('Files converted and downloaded successfully!', true, 'Success');
-        }, 1000);
+        // Success feedback
+        showToast('Files converted successfully! 🎉', 'success');
+        convertBtn.classList.add('success-animation');
+        setTimeout(() => convertBtn.classList.remove('success-animation'), 1000);
       } else {
-        // Handle JSON response
-        const result = await response.json();
-        showLoading(false);
-        
-        if (result.success) {
-          showStep(4);
-          showToast(result.message || 'Conversion completed successfully!', true, 'Success');
-        } else {
-          showToast(result.message || 'Conversion completed with warnings', true, 'Info');
-          showStep(4);
-        }
+        showToast('No file was generated for download', 'warning');
       }
     } else {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Conversion failed');
+      const error = await response.json();
+      showToast(error.error || 'Conversion failed', 'error');
     }
   } catch (error) {
-    showLoading(false);
-    showToast(error.message, false, 'Conversion Failed');
-    console.error('Conversion error:', error);
+    clearInterval(progressInterval);
+    showToast('Conversion error: ' + error.message, 'error');
+  } finally {
+    // Reset UI
+    loadingOverlay.classList.add('hidden');
+    convertBtn.disabled = false;
+    convertBtn.innerHTML = '<i class="fas fa-rocket"></i> <span data-i18n="convert">🚀 Convert Files</span>';
+    progressContainer.classList.add('hidden');
+    progressFill.style.width = '0%';
   }
 }
 
-// אתחול האפליקציה
-document.addEventListener("DOMContentLoaded", () => {
-  // הסתר את כל השלבים חוץ מהראשון
-  showStep(1);
-  
-  // Setup all components
-  setupDragAndDrop();
-  setupLanguageSelector();
-  setupDarkMode();
-  
-  // Setup file input change event
-  if (inputFiles) {
-    inputFiles.addEventListener('change', handleFileChange);
-  }
-  
-  // Setup clear all button
-  const clearAllBtn = document.getElementById('clearAll');
-  if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', clearAllFiles);
-  }
-  
-  // Setup toast close button
-  if (toast) {
-    const toastClose = toast.querySelector('.toast-close');
-    if (toastClose) {
-      toastClose.addEventListener('click', () => {
-        toast.classList.remove('show');
-      });
+// Language system
+async function loadTranslation(lang) {
+  try {
+    const response = await fetch(`/translations/${lang}.json`);
+    if (response.ok) {
+      return await response.json();
     }
+  } catch (error) {
+    console.error('Failed to load translation:', error);
+  }
+  return {};
+}
+
+function getTranslation(key) {
+  return translations[key] || key;
+}
+
+function updateUI() {
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    const key = element.getAttribute('data-i18n');
+    const translation = getTranslation(key);
+    
+    if (element.tagName === 'INPUT' && element.placeholder !== undefined) {
+      element.placeholder = translation;
+    } else {
+      element.textContent = translation;
+    }
+  });
+  
+  // Update direction for RTL languages
+  if (['he', 'ar', 'fa'].includes(currentLanguage)) {
+    document.body.classList.add('rtl');
+  } else {
+    document.body.classList.remove('rtl');
+  }
+}
+
+async function changeLanguage(lang) {
+  currentLanguage = lang;
+  localStorage.setItem('selectedLanguage', lang);
+  languageSelect.value = lang;
+  
+  translations = await loadTranslation(lang);
+  updateUI();
+}
+
+// Enhanced dark mode toggle
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('darkMode', isDark);
+  
+  const icon = darkModeToggle.querySelector('i');
+  icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+  
+  // Add rotation animation
+  darkModeToggle.style.transform = 'rotate(360deg)';
+  setTimeout(() => {
+    darkModeToggle.style.transform = '';
+  }, 300);
+  
+  showToast(`${isDark ? '🌙 Dark' : '☀️ Light'} mode activated`, 'success');
+}
+
+// Enhanced drag and drop with visual feedback
+function setupDragAndDrop() {
+  uploadArea.addEventListener('click', (e) => {
+    e.preventDefault();
+    inputFiles.click();
+  });
+
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+  });
+
+  uploadArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    if (!uploadArea.contains(e.relatedTarget)) {
+      uploadArea.classList.remove('dragover');
+    }
+  });
+
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    uploadArea.classList.add('file-uploading');
+    
+    if (e.dataTransfer.files.length > 0) {
+      setTimeout(() => {
+        handleFiles(e.dataTransfer.files);
+        uploadArea.classList.remove('file-uploading');
+      }, 500);
+    }
+  });
+
+  inputFiles.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      uploadArea.classList.add('file-uploading');
+      setTimeout(() => {
+        handleFiles(e.target.files);
+        uploadArea.classList.remove('file-uploading');
+      }, 300);
+    }
+  });
+}
+
+languageSelect.addEventListener('change', (e) => {
+  changeLanguage(e.target.value);
+});
+
+darkModeToggle.addEventListener('click', toggleDarkMode);
+
+// Enhanced initialization
+document.addEventListener('DOMContentLoaded', () => {
+  // Load saved settings
+  const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+  const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+  
+  // Apply saved settings
+  if (savedDarkMode) {
+    document.body.classList.add('dark-mode');
+    darkModeToggle.querySelector('i').className = 'fas fa-sun';
   }
   
-  // Setup convert another button
-  const convertAnotherBtn = document.getElementById('convertAnother');
-  if (convertAnotherBtn) {
-    convertAnotherBtn.addEventListener('click', () => {
-      selectedFiles = [];
-      updateFilePreview();
-      showStep(1);
-    });
-  }
+  languageSelect.value = savedLanguage;
+  changeLanguage(savedLanguage);
   
-  // Setup navigation event listeners
-  const nextStep1 = document.getElementById("nextStep1");
-  const prevStep2 = document.getElementById("prevStep2");
-  const nextStep2 = document.getElementById("nextStep2");
-  const prevStep3 = document.getElementById("prevStep3");
-  const convertButton = document.getElementById("convertButton");
+  // Setup enhanced interactions
+  setupDragAndDrop();
   
-  if (nextStep1) nextStep1.addEventListener("click", goToStep2);
-  if (prevStep2) prevStep2.addEventListener("click", () => showStep(1));
-  if (nextStep2) nextStep2.addEventListener("click", goToStep3);
-  if (prevStep3) prevStep3.addEventListener("click", () => showStep(2));
-  if (convertButton) convertButton.addEventListener("click", handleConversion);
+  // Add event listeners
+  languageSelect.addEventListener('change', (e) => {
+    changeLanguage(e.target.value);
+  });
+  
+  darkModeToggle.addEventListener('click', toggleDarkMode);
+  
+  // Add entrance animation to main elements
+  document.querySelector('.header').classList.add('fade-in-up');
+  document.querySelector('.main-content').classList.add('fade-in-up');
+  document.querySelector('.footer').classList.add('fade-in-up');
+  
+  // Welcome message
+  setTimeout(() => {
+    showToast('Welcome to File Converter Pro! 🚀', 'success');
+  }, 1000);
 });
